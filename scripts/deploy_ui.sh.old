@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# ----------------------------------------
+# Usage:
+#   ./deploy_ui.sh dev
+#   ./deploy_ui.sh prod
+#
+# Optional:
+#   UI_DIR=easyreceipts-review ./deploy_ui.sh dev
+# ----------------------------------------
+
+ENV="${1:-}"
+
+if [[ "$ENV" != "dev" && "$ENV" != "prod" ]]; then
+  echo "Usage: $0 {dev|prod}"
+  exit 1
+fi
+
+STACK="easyreceipts-${ENV}"
+REGION="${AWS_REGION:-eu-central-1}"
+
+# Default UI directory is easyreceipts-review
+UI_DIR="${UI_DIR:-easyreceipts-review}"
+
+echo "🚀 Deploying UI for environment: $ENV"
+echo "📁 UI directory: $UI_DIR"
+echo "📍 Region: $REGION"
+echo "🧱 Stack: $STACK"
+
+# ----------------------------------------
+# Get Outputs from CloudFormation
+# ----------------------------------------
+get_output () {
+  local key="$1"
+  aws cloudformation describe-stacks \
+    --region "$REGION" \
+    --stack-name "$STACK" \
+    --query "Stacks[0].Outputs[?OutputKey=='${key}'].OutputValue" \
+    --output text
+}
+
+UI_BUCKET="$(get_output UiBucketName)"
+UI_DOMAIN="$(get_output UiDistributionDomain)"
+
+if [[ -z "${UI_BUCKET:-}" || "${UI_BUCKET}" == "None" || -z "${UI_DOMAIN:-}" || "${UI_DOMAIN}" == "None" ]]; then
+  echo "❌ Unable to read UiBucketName/UiDistributionDomain outputs from stack $STACK in $REGION"
+  echo "   Check that the stack exists and Outputs are present."
+  exit 1
+fi
+
+echo "📦 UI bucket: $UI_BUCKET"
+echo "🌍 CloudFront domain: $UI_DOMAIN"
+
+# ----------------------------------------
+# Sync UI to S3
+# ----------------------------------------
+if [[ ! -d "$UI_DIR" ]]; then
+  echo "❌ UI directory '$UI_DIR' not found (expected at: $(pwd)/$UI_DIR)"
+  exit 1
+fi
+
+echo "⬆️  Syncing UI to S3..."
+aws s3 sync "$UI_DIR/" "s3://$UI_BUCKET/" --delete
+
+# ----------------------------------------
+# Resolve CloudFront Distribution ID
+# ----------------------------------------
+DISTRIBUTION_ID="$(aws cloudfront list-distributions \
+  --query "DistributionList.Items[?DomainName=='${UI_DOMAIN}'].Id" \
+  --output text)"
+
+if [[ -z "${DISTRIBUTION_ID:-}" || "${DISTRIBUTION_ID}" == "None" ]]; then
+  echo "❌ Unable to resolve CloudFront distribution ID for domain: $UI_DOMAIN"
+  exit 1
+fi
+
+echo "🆔 CloudFront distribution ID: $DISTRIBUTION_ID"
+
+# ----------------------------------------
+# Invalidate cache
+# ----------------------------------------
+echo "♻️  Creating CloudFront invalidation..."
+aws cloudfront create-invalidation \
+  --distribution-id "$DISTRIBUTION_ID" \
+  --paths "/*" \
+  >/dev/null
+
+echo "✅ UI deploy completed for $ENV"
+echo "➡️  UI URL: https://${UI_DOMAIN}"

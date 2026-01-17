@@ -1,0 +1,557 @@
+
+"""
+EasyReceipts - API Lambda entrypoint (HTTP API / Lambda proxy)
+
+Endpoints:
+- POST /auth/exchange          (PUBLIC)  OAuth2 code+PKCE -> Cognito tokens
+- POST /receipts               (AUTH)    Create receipt + presigned S3 PUT URL
+- GET  /receipts               (AUTH)    List receipts for current user (basic)
+- GET  /receipts/{receiptId}   (AUTH)    Get receipt status + OCR summary (reads from S3 ocr/<sub>/<id>.json)
+
+S3 layout:
+- original/<sub>/<receiptId>           (PUT via presigned URL)
+- processed/<sub>/<receiptId>.jpg      (produced by preprocess)
+- ocr/<sub>/<receiptId>.json           (produced by OCR lambda; Textract AnalyzeExpense output)
+
+Notes:
+- For now, "status" is inferred by existence of S3 artifacts.
+- Later we can formalize statuses in DynamoDB and have preprocess/ocr update them.
+"""
+
+from __future__ import annotations
+
+import base64
+import datetime as dt
+import json
+import os
+import re
+import uuid
+import urllib.parse
+import urllib.request
+from typing import Any, Dict, Optional
+
+import boto3
+from boto3.dynamodb.conditions import Key
+from botocore.exceptions import ClientError
+
+dynamodb = boto3.resource("dynamodb")
+s3 = boto3.client("s3")
+
+RECEIPTS_TABLE = os.getenv("RECEIPTS_TABLE", "")
+UPLOADS_BUCKET = os.getenv("UPLOADS_BUCKET", "")
+
+COGNITO_DOMAIN = os.getenv("COGNITO_DOMAIN", "").strip()  # without https://
+COGNITO_CLIENT_ID = os.getenv("COGNITO_CLIENT_ID", "").strip()
+
+UI_ORIGIN = os.getenv("UI_ORIGIN", "").strip()  # optional: force allow-origin
+
+DEFAULT_HEADERS = {"content-type": "application/json"}
+
+
+def _now_iso() -> str:
+    return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat()
+
+
+def _json(status: int, body: Any, origin: str) -> Dict[str, Any]:
+    headers = dict(DEFAULT_HEADERS)
+    headers["access-control-allow-origin"] = origin
+    headers["vary"] = "origin"
+    return {"statusCode": status, "headers": headers, "body": json.dumps(body)}
+
+
+def _pick_allow_origin(event: Dict[str, Any]) -> str:
+    if UI_ORIGIN:
+        return UI_ORIGIN
+    h = event.get("headers") or {}
+    return h.get("origin") or h.get("Origin") or "*"
+
+
+def _path(event: Dict[str, Any]) -> str:
+    return event.get("rawPath") or event.get("path") or "/"
+
+
+def _method(event: Dict[str, Any]) -> str:
+    ctx = event.get("requestContext") or {}
+    http = ctx.get("http") or {}
+    return (http.get("method") or event.get("httpMethod") or "GET").upper()
+
+
+def _read_json(event: Dict[str, Any]) -> Dict[str, Any]:
+    body = event.get("body")
+    if not body:
+        return {}
+    if event.get("isBase64Encoded"):
+        body = base64.b64decode(body).decode("utf-8", errors="replace")
+    try:
+        return json.loads(body)
+    except Exception:
+        return {}
+
+
+def _claims(event: Dict[str, Any]) -> Dict[str, Any]:
+    return (
+        (event.get("requestContext") or {})
+        .get("authorizer", {})
+        .get("jwt", {})
+        .get("claims", {})
+    ) or {}
+
+
+def _user_sub(event: Dict[str, Any]) -> str:
+    c = _claims(event)
+    return str(c.get("sub") or c.get("username") or "")
+
+
+
+def _require_user(event: Dict[str, Any]) -> Dict[str, Any]:
+    """Return JWT claims or raise 401 in callers."""
+    return _claims(event)
+
+
+def _require_env(origin: str) -> Optional[Dict[str, Any]]:
+    if not RECEIPTS_TABLE or not UPLOADS_BUCKET:
+        return _json(
+            500,
+            {"error": "server_misconfigured", "error_description": "Missing RECEIPTS_TABLE / UPLOADS_BUCKET"},
+            origin,
+        )
+    return None
+
+
+def _receipts_table():
+    return dynamodb.Table(RECEIPTS_TABLE)
+
+
+# -------------------------
+# Cognito token exchange
+# -------------------------
+def _cognito_token_exchange(code: str, redirect_uri: str, code_verifier: str) -> Dict[str, Any]:
+    if not COGNITO_DOMAIN or not COGNITO_CLIENT_ID:
+        raise RuntimeError("Missing COGNITO_DOMAIN / COGNITO_CLIENT_ID")
+
+    token_url = f"https://{COGNITO_DOMAIN}/oauth2/token"
+    form = {
+        "grant_type": "authorization_code",
+        "client_id": COGNITO_CLIENT_ID,
+        "code": code,
+        "redirect_uri": redirect_uri,
+        "code_verifier": code_verifier,
+    }
+    data = urllib.parse.urlencode(form).encode("utf-8")
+    req = urllib.request.Request(token_url, data=data, method="POST")
+    req.add_header("Content-Type", "application/x-www-form-urlencoded")
+
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            payload = resp.read().decode("utf-8")
+            return json.loads(payload)
+    except urllib.error.HTTPError as e:
+        msg = e.read().decode("utf-8", errors="replace")
+        try:
+            j = json.loads(msg)
+        except Exception:
+            j = {"error": "invalid_grant", "error_description": msg}
+        raise RuntimeError(f"Token exchange failed: {json.dumps(j)}")
+    except Exception as e:
+        raise RuntimeError(f"Token exchange failed: {str(e)}")
+
+
+# -------------------------
+# Receipt helpers (S3 artifacts)
+# -------------------------
+def _s3_key_original(sub: str, receipt_id: str) -> str:
+    return f"original/{sub}/{receipt_id}"
+
+
+def _s3_key_processed(sub: str, receipt_id: str) -> str:
+    return f"processed/{sub}/{receipt_id}.jpg"
+
+
+def _s3_key_ocr(sub: str, receipt_id: str) -> str:
+    return f"ocr/{sub}/{receipt_id}.json"
+
+
+def _s3_exists(key: str) -> bool:
+    try:
+        s3.head_object(Bucket=UPLOADS_BUCKET, Key=key)
+        return True
+    except ClientError:
+        return False
+
+
+def _s3_get_json(key: str) -> Optional[Dict[str, Any]]:
+    try:
+        obj = s3.get_object(Bucket=UPLOADS_BUCKET, Key=key)
+        data = obj["Body"].read()
+        return json.loads(data.decode("utf-8"))
+    except ClientError:
+        return None
+    except Exception:
+        return None
+
+
+def _presigned_get(key: str, expires: int = 900) -> Optional[str]:
+    try:
+        return s3.generate_presigned_url(
+            ClientMethod="get_object",
+            Params={"Bucket": UPLOADS_BUCKET, "Key": key},
+            ExpiresIn=expires,
+        )
+    except ClientError:
+        return None
+
+
+def _money_to_number(s: str) -> Optional[float]:
+    if not s:
+        return None
+    t = s.replace("€", "").replace("EUR", "").strip()
+    if re.search(r"\d+,\d+", t) and not re.search(r"\d+\.\d+", t):
+        t = t.replace(".", "").replace(",", ".")
+    m = re.findall(r"[-+]?\d+(?:\.\d+)?", t)
+    if not m:
+        return None
+    try:
+        return float(m[0])
+    except Exception:
+        return None
+
+
+def _extract_summary_fields(textract: Dict[str, Any]) -> Dict[str, Any]:
+    out: Dict[str, Any] = {"fields": {}, "confidence": {}}
+    docs = textract.get("ExpenseDocuments") or []
+    if not docs:
+        return out
+    sf = docs[0].get("SummaryFields") or []
+
+    def put(key: str, val: Any, conf: Optional[float]):
+        if val is None or val == "":
+            return
+        out["fields"][key] = val
+        if conf is not None:
+            out["confidence"][key] = conf
+
+    for f in sf:
+        t = ((f.get("Type") or {}).get("Text") or "").upper()
+        v = (f.get("ValueDetection") or {}).get("Text") or ""
+        conf = (f.get("ValueDetection") or {}).get("Confidence")
+        if conf is None:
+            conf = (f.get("Type") or {}).get("Confidence")
+
+        if t == "VENDOR_NAME":
+            put("payee", v, conf)
+        elif t == "INVOICE_RECEIPT_DATE":
+            put("date_raw", v, conf)
+        elif t == "TOTAL":
+            put("total_raw", v, conf)
+        elif t == "TAX":
+            put("tax_raw", v, conf)
+        elif t == "OTHER":
+            label = ((f.get("LabelDetection") or {}).get("Text") or "").lower()
+            if "tasso" in label and "%" in v:
+                put("vat_rate_raw", v, conf)
+
+    # Normalize numbers (best effort)
+    if "total_raw" in out["fields"]:
+        put("total", _money_to_number(out["fields"]["total_raw"]), out["confidence"].get("total_raw"))
+    if "tax_raw" in out["fields"]:
+        put("tax", _money_to_number(out["fields"]["tax_raw"]), out["confidence"].get("tax_raw"))
+
+    return out
+
+
+# -------------------------
+# Receipts API
+# -------------------------
+def _create_receipt(event: Dict[str, Any], origin: str) -> Dict[str, Any]:
+    missing = _require_env(origin)
+    if missing:
+        return missing
+
+    sub = _user_sub(event)
+    if not sub:
+        return _json(401, {"message": "Unauthorized"}, origin)
+
+    payload = _read_json(event)
+    content_type = (payload.get("contentType") or payload.get("content_type") or "image/jpeg").strip() or "image/jpeg"
+
+    receipt_id = str(uuid.uuid4())
+    created_at = _now_iso()
+    status = "NEW"
+
+    key = _s3_key_original(sub, receipt_id)
+
+    try:
+        upload_url = s3.generate_presigned_url(
+            ClientMethod="put_object",
+            Params={"Bucket": UPLOADS_BUCKET, "Key": key, "ContentType": content_type},
+            ExpiresIn=900,
+        )
+    except ClientError as e:
+        return _json(500, {"error": "presign_failed", "message": str(e)}, origin)
+
+    item = {
+        "PK": f"USER#{sub}",
+        "SK": f"RECEIPT#{receipt_id}",
+        "GSI1PK": f"USER#{sub}#STATUS#{status}",
+        "GSI1SK": created_at,
+        "receiptId": receipt_id,
+        "status": status,
+        "createdAt": created_at,
+        "contentType": content_type,
+        "s3Bucket": UPLOADS_BUCKET,
+        "s3Key": key,
+    }
+
+    try:
+        _receipts_table().put_item(Item=item)
+    except ClientError as e:
+        return _json(500, {"error": "db_write_failed", "message": str(e)}, origin)
+
+    return _json(
+        201,
+        {"receiptId": receipt_id, "uploadUrl": upload_url, "imagePath": f"s3://{UPLOADS_BUCKET}/{key}"},
+        origin,
+    )
+
+
+def _list_receipts(event: Dict[str, Any], origin: str) -> Dict[str, Any]:
+    missing = _require_env(origin)
+    if missing:
+        return missing
+
+    sub = _user_sub(event)
+    if not sub:
+        return _json(401, {"message": "Unauthorized"}, origin)
+
+    try:
+        resp = _receipts_table().query(
+            KeyConditionExpression=Key("PK").eq(f"USER#{sub}") & Key("SK").begins_with("RECEIPT#"),
+            Limit=50,
+            ScanIndexForward=False,
+        )
+        items = resp.get("Items", [])
+        out = []
+        for it in items:
+            rid = it.get("receiptId")
+            out.append(
+                {
+                    "id": rid,
+                    "status": it.get("status"),
+                    "createdAt": it.get("createdAt"),
+                    "payee": it.get("payee"),
+                    "amount": it.get("amount"),
+                    "date": it.get("date"),
+                    "s3Key": it.get("s3Key"),
+                }
+            )
+        return _json(200, {"items": out}, origin)
+    except ClientError as e:
+        return _json(500, {"error": "db_query_failed", "message": str(e)}, origin)
+
+
+def _get_receipt(event: Dict[str, Any], origin: str, receipt_id: str) -> Dict[str, Any]:
+    missing = _require_env(origin)
+    if missing:
+        return missing
+
+    sub = _user_sub(event)
+    if not sub:
+        return _json(401, {"message": "Unauthorized"}, origin)
+
+    key_original = _s3_key_original(sub, receipt_id)
+    key_processed = _s3_key_processed(sub, receipt_id)
+    key_ocr = _s3_key_ocr(sub, receipt_id)
+
+    has_original = _s3_exists(key_original)
+    has_processed = _s3_exists(key_processed)
+    has_ocr = _s3_exists(key_ocr)
+
+    if not has_original:
+        return _json(404, {"message": "Receipt not found"}, origin)
+
+    status = "NEW"
+    if has_processed:
+        status = "PROCESSED"
+    if has_ocr:
+        status = "OCR_DONE"
+
+    ocr_json = _s3_get_json(key_ocr) if has_ocr else None
+    summary = _extract_summary_fields(ocr_json) if ocr_json else {"fields": {}, "confidence": {}}
+
+    processed_url = _presigned_get(key_processed, 900) if has_processed else None
+
+    return _json(
+        200,
+        {
+            "receiptId": receipt_id,
+            "status": status,
+            "artifacts": {
+                "originalKey": key_original,
+                "processedKey": key_processed if has_processed else None,
+                "ocrKey": key_ocr if has_ocr else None,
+                "processedUrl": processed_url,
+            },
+            "ocr": {"summary": summary, "raw": ocr_json},
+        },
+        origin,
+    )
+
+
+# -------------------------
+# Main handler
+# -------------------------
+
+
+def _normalize_date(date_str: str) -> str:
+  """Accepts YYYY-MM-DD or DD-MM-YYYY and returns YYYY-MM-DD."""
+  s = (date_str or "").strip()
+  if not s:
+    return s
+  # already iso
+  m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", s)
+  if m:
+    return s
+  m = re.fullmatch(r"(\d{2})-(\d{2})-(\d{4})", s)
+  if m:
+    dd, mm, yyyy = m.group(1), m.group(2), m.group(3)
+    return f"{yyyy}-{mm}-{dd}"
+  return s  # fallback as-is
+
+
+def _update_receipt(event: Dict[str, Any], origin: str, receipt_id: str) -> Dict[str, Any]:
+  user = _require_user(event)
+  sub = user.get("sub")
+  if not sub:
+    return _json(401, {"error": "unauthorized"}, origin)
+
+  body = _read_json(event)
+  payee = (body.get("payee") or "").strip()
+  date = _normalize_date(body.get("date") or "")
+  total_v = (body.get("total") if "total" in body else body.get("amount"))
+  if isinstance(total_v, (int, float)):
+    total = str(total_v)
+  else:
+    total = (str(total_v) if total_v is not None else "").strip()
+  vat_v = body.get("vat")
+  if isinstance(vat_v, (int, float)):
+    vat = str(vat_v)
+  else:
+    vat = (str(vat_v) if vat_v is not None else "").strip()
+  vat_rate = (body.get("vatRate") or "").strip()
+  note = (body.get("note") or body.get("notes") or "").strip()
+  status = (body.get("status") or "").strip() or None
+
+  # If confirming, enforce required fields
+  if status == "CONFIRMED":
+    missing = []
+    if not payee: missing.append("payee")
+    if not date: missing.append("date")
+    if not total: missing.append("total")
+    if missing:
+      return _json(400, {"error": "validation_error", "missing": missing}, origin)
+
+  now = _now_iso()
+  pk = f"USER#{sub}"
+  sk = f"RECEIPT#{receipt_id}"
+
+  expr = "SET updatedAt=:u"
+  values = {":u": now}
+  names: Dict[str, str] = {}
+
+  def set_attr(name: str, placeholder: str, value: Any):
+    nonlocal expr
+    if value is None:
+      return
+    names[f"#{name}"] = name
+    values[placeholder] = value
+    expr += f", #{name}={placeholder}"
+
+  set_attr("payee", ":p", payee if payee else None)
+  set_attr("date", ":d", date if date else None)
+  set_attr("total", ":t", total if total else None)
+  set_attr("vat", ":v", vat if vat else None)
+  set_attr("vatRate", ":vr", vat_rate if vat_rate else None)
+  set_attr("note", ":n", note if note else None)
+
+  if status:
+    set_attr("status", ":s", status)
+    if status == "CONFIRMED":
+      set_attr("confirmedAt", ":c", now)
+      # allow archive filtering by status via GSI
+      set_attr("gsi1pk", ":gpk", pk)
+      set_attr("gsi1sk", ":gsk", f"STATUS#{status}#{now}")
+
+  table = _receipts_table()
+  try:
+    resp = table.update_item(
+      Key={"pk": pk, "sk": sk},
+      UpdateExpression=expr,
+      ExpressionAttributeValues=values,
+      ExpressionAttributeNames=names if names else None,
+      ConditionExpression="attribute_exists(pk) AND attribute_exists(sk)",
+      ReturnValues="ALL_NEW",
+    )
+  except ClientError as e:
+    if e.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
+      return _json(404, {"error": "not_found"}, origin)
+    raise
+
+  item = resp.get("Attributes") or {}
+  return _json(200, {"receiptId": receipt_id, "item": item}, origin)
+
+def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+    origin = _pick_allow_origin(event)
+    path = _path(event)
+    method = _method(event)
+
+    if method == "OPTIONS":
+        return {
+            "statusCode": 200,
+            "headers": {
+                "access-control-allow-origin": origin,
+                "access-control-allow-methods": "DELETE,GET,OPTIONS,POST,PUT",
+                "access-control-allow-headers": "authorization,content-type",
+                "access-control-max-age": "600",
+                "vary": "origin",
+                "content-type": "application/json",
+            },
+            "body": "{}",
+        }
+
+    if path == "/auth/exchange" and method == "POST":
+        payload = _read_json(event)
+        code = str(payload.get("code") or "")
+        redirect_uri = str(payload.get("redirectUri") or payload.get("redirect_uri") or "")
+        code_verifier = str(payload.get("codeVerifier") or payload.get("code_verifier") or "")
+
+        if not code or not redirect_uri or not code_verifier:
+            return _json(400, {"error": "invalid_request", "error_description": "Missing code / redirectUri / codeVerifier"}, origin)
+
+        try:
+            tokens = _cognito_token_exchange(code=code, redirect_uri=redirect_uri, code_verifier=code_verifier)
+            return _json(200, tokens, origin)
+        except RuntimeError as e:
+            msg = str(e)
+            if "Token exchange failed:" in msg:
+                try:
+                    j = json.loads(msg.split("Token exchange failed:", 1)[1].strip())
+                    return _json(400, j, origin)
+                except Exception:
+                    return _json(400, {"error": "invalid_grant", "error_description": msg}, origin)
+            return _json(500, {"error": "server_error", "error_description": msg}, origin)
+
+    if path == "/receipts" and method == "POST":
+        return _create_receipt(event, origin)
+
+    if path == "/receipts" and method == "GET":
+        return _list_receipts(event, origin)
+
+    if path.startswith("/receipts/") and method == "GET":
+        receipt_id = path.split("/", 2)[2]
+        return _get_receipt(event, origin, receipt_id)
+
+    if path.startswith("/receipts/") and method == "PUT":
+        receipt_id = path.split("/", 2)[2]
+        return _update_receipt(event, origin, receipt_id)
+
+    return _json(404, {"message": "Not Found"}, origin)
