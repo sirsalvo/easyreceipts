@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,24 +10,73 @@ import {
   clearAuthSession,
 } from '@/lib/auth';
 import { getYNABConfig, saveYNABConfig } from '@/lib/ynab';
-import { createCheckoutSession, createBillingPortal } from '@/lib/api';
+import { createCheckoutSession, createBillingPortal, getUserStatus } from '@/lib/api';
 import { useUserStatus } from '@/hooks/useUserStatus';
+import { setUserState } from '@/lib/userStore';
 import { Settings as SettingsIcon, LogOut, ArrowLeft, Eye, EyeOff, CreditCard, Loader2 } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import BottomNavigation from '@/components/BottomNavigation';
 
+type ActivationState = 'idle' | 'activating' | 'success' | 'timeout' | 'error';
+
 const Settings = () => {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [authenticated, setAuthenticated] = useState(false);
   const { status, fetchStatus } = useUserStatus();
   const [billingLoading, setBillingLoading] = useState(false);
+  const [activationState, setActivationState] = useState<ActivationState>('idle');
+  
+  // Track if we've already handled the billing param to prevent re-runs
+  const billingHandledRef = useRef(false);
   
   // YNAB settings
   const [ynabToken, setYnabToken] = useState('');
   const [ynabBudgetId, setYnabBudgetId] = useState('last-used');
   const [ynabAccountId, setYnabAccountId] = useState('');
   const [showToken, setShowToken] = useState(false);
+
+  // Clean URL without reload
+  const cleanUrl = useCallback(() => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('billing');
+    window.history.replaceState({}, '', url.toString());
+  }, []);
+
+  // Polling for subscription activation
+  const pollForActivation = useCallback(async () => {
+    const MAX_ATTEMPTS = 6;
+    const INTERVAL_MS = 1000;
+    
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        const data = await getUserStatus();
+        if (data.status === 'active') {
+          // Update global store
+          setUserState({
+            status: data.status,
+            daysRemaining: data.daysRemaining ?? null,
+            loading: false,
+          });
+          setActivationState('success');
+          cleanUrl();
+          return true;
+        }
+      } catch (error) {
+        console.error('Poll attempt failed:', error);
+      }
+      
+      // Wait before next attempt (except on last attempt)
+      if (attempt < MAX_ATTEMPTS) {
+        await new Promise(resolve => setTimeout(resolve, INTERVAL_MS));
+      }
+    }
+    
+    // Max attempts reached without success
+    setActivationState('timeout');
+    cleanUrl();
+    return false;
+  }, [cleanUrl]);
 
   useEffect(() => {
     setAuthenticated(isAuthenticated());
@@ -37,29 +86,33 @@ const Settings = () => {
     setYnabToken(ynabConfig.token);
     setYnabBudgetId(ynabConfig.budgetId);
     setYnabAccountId(ynabConfig.accountId);
+  }, []);
 
-    // Handle Stripe redirect
+  // Handle Stripe redirect separately to control polling
+  useEffect(() => {
+    if (billingHandledRef.current) return;
+    
     const billingResult = searchParams.get('billing');
+    
     if (billingResult === 'success') {
-      toast({
-        title: 'Success',
-        description: 'Subscription activated successfully.',
+      billingHandledRef.current = true;
+      setActivationState('activating');
+      
+      // Start polling
+      pollForActivation().catch((error) => {
+        console.error('Polling error:', error);
+        setActivationState('error');
+        cleanUrl();
       });
-      // Refresh user status
-      fetchStatus();
-      // Remove query param
-      searchParams.delete('billing');
-      setSearchParams(searchParams, { replace: true });
     } else if (billingResult === 'cancel') {
+      billingHandledRef.current = true;
       toast({
         title: 'Checkout canceled',
-        description: 'Checkout canceled. You can activate your subscription anytime.',
+        description: 'You can activate your subscription anytime.',
       });
-      // Remove query param
-      searchParams.delete('billing');
-      setSearchParams(searchParams, { replace: true });
+      cleanUrl();
     }
-  }, [searchParams, setSearchParams, fetchStatus]);
+  }, [searchParams, pollForActivation, cleanUrl]);
 
   const handleSaveYNABSettings = () => {
     saveYNABConfig({
@@ -142,7 +195,22 @@ const Settings = () => {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {status === 'active' ? (
+            {/* Activating state - polling in progress */}
+            {activationState === 'activating' && (
+              <>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Activating subscription…</span>
+                </div>
+                <Button disabled className="w-full">
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Manage billing
+                </Button>
+              </>
+            )}
+            
+            {/* Success state or already active */}
+            {(activationState === 'success' || (activationState === 'idle' && status === 'active')) && (
               <>
                 <p className="text-sm text-muted-foreground">
                   Your subscription is active.
@@ -158,7 +226,48 @@ const Settings = () => {
                   Manage billing
                 </Button>
               </>
-            ) : (
+            )}
+            
+            {/* Timeout state - couldn't confirm */}
+            {activationState === 'timeout' && (
+              <>
+                <p className="text-sm text-amber-600">
+                  We couldn't confirm the subscription yet. Please refresh in a few seconds.
+                </p>
+                <Button
+                  onClick={handleManageBilling}
+                  disabled={billingLoading}
+                  className="w-full"
+                >
+                  {billingLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : null}
+                  Manage billing
+                </Button>
+              </>
+            )}
+            
+            {/* Error state */}
+            {activationState === 'error' && (
+              <>
+                <p className="text-sm text-destructive">
+                  Something went wrong. Please try again.
+                </p>
+                <Button
+                  onClick={() => {
+                    setActivationState('idle');
+                    fetchStatus();
+                  }}
+                  variant="outline"
+                  className="w-full"
+                >
+                  Retry
+                </Button>
+              </>
+            )}
+            
+            {/* Idle state - not active */}
+            {activationState === 'idle' && status !== 'active' && (
               <>
                 <p className="text-sm text-muted-foreground">
                   You are currently on the free trial.
