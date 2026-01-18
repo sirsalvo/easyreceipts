@@ -6,9 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from '@/hooks/use-toast';
 import { getReceipts, Receipt } from '@/lib/api';
 import { isAuthenticated } from '@/lib/auth';
+import { useUserStatus } from '@/hooks/useUserStatus';
 import { cn, formatCurrency } from '@/lib/utils';
 import { getYNABConfig, exportToYNAB } from '@/lib/ynab';
 import { 
@@ -54,8 +56,10 @@ const Export = () => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectAll, setSelectAll] = useState(true);
   const [exportMode, setExportMode] = useState<ExportMode>('csv');
+  const { status: userStatus } = useUserStatus();
 
   const authenticated = isAuthenticated();
+  const isExpired = userStatus === 'expired';
 
   useEffect(() => {
     if (!authenticated) {
@@ -572,22 +576,33 @@ const Export = () => {
       {receipts.length > 0 && (
         <div className="fixed bottom-16 left-0 right-0 p-4 bg-background border-t border-border">
           <div className="max-w-lg mx-auto">
-            <Button
-              className="w-full"
-              onClick={handleExport}
-              disabled={exporting || selectedReceipts.length === 0}
-            >
-              {exporting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : exportMode === 'csv' ? (
-                <Download className="h-4 w-4 mr-2" />
-              ) : (
-                <div className="w-4 h-4 rounded bg-blue-500 flex items-center justify-center mr-2">
-                  <span className="text-white text-[10px] font-bold">Y</span>
-                </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="w-full">
+                  <Button
+                    className="w-full"
+                    onClick={handleExport}
+                    disabled={exporting || selectedReceipts.length === 0 || isExpired}
+                  >
+                    {exporting ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : exportMode === 'csv' ? (
+                      <Download className="h-4 w-4 mr-2" />
+                    ) : (
+                      <div className="w-4 h-4 rounded bg-blue-500 flex items-center justify-center mr-2">
+                        <span className="text-white text-[10px] font-bold">Y</span>
+                      </div>
+                    )}
+                    Export {selectedReceipts.length} Receipt(s) {exportMode === 'csv' ? 'to CSV' : 'to YNAB'}
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              {isExpired && (
+                <TooltipContent>
+                  <p>Your free trial has ended. Activate a subscription to export receipts.</p>
+                </TooltipContent>
               )}
-              Export {selectedReceipts.length} Receipt(s) {exportMode === 'csv' ? 'to CSV' : 'to YNAB'}
-            </Button>
+            </Tooltip>
           </div>
         </div>
       )}

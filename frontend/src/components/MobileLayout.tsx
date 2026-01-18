@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { isDevMode } from '@/lib/auth';
-import { Badge } from '@/components/ui/badge';
 import { Construction } from 'lucide-react';
+import BillingBanner from '@/components/BillingBanner';
 
 interface MobileLayoutProps {
   children: ReactNode;
@@ -18,6 +18,7 @@ const MobileLayout = ({ children }: MobileLayoutProps) => {
           <span className="text-xs font-medium text-amber-700">Dev Mode — Auth Bypassed</span>
         </div>
       )}
+      <BillingBanner />
       <div className="max-w-lg mx-auto min-h-screen">
         {children}
       </div>

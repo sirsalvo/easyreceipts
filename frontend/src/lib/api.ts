@@ -264,3 +264,30 @@ export const updateReceipt = async (
     body,
   });
 };
+
+// ============= User Status & Billing API =============
+
+export interface UserStatusResponse {
+  status: 'trial' | 'active' | 'expired';
+  daysRemaining?: number;
+}
+
+export const getUserStatus = async (): Promise<UserStatusResponse> => {
+  return apiRequest<UserStatusResponse>('/me');
+};
+
+export interface CheckoutResponse {
+  url: string;
+}
+
+export const createCheckoutSession = async (): Promise<CheckoutResponse> => {
+  return apiRequest<CheckoutResponse>('/billing/checkout', { method: 'POST' });
+};
+
+export interface PortalResponse {
+  url: string;
+}
+
+export const createBillingPortal = async (): Promise<PortalResponse> => {
+  return apiRequest<PortalResponse>('/billing/portal', { method: 'POST' });
+};

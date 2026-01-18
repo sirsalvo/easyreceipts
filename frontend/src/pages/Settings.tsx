@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,13 +10,18 @@ import {
   clearAuthSession,
 } from '@/lib/auth';
 import { getYNABConfig, saveYNABConfig } from '@/lib/ynab';
-import { Settings as SettingsIcon, LogOut, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { createCheckoutSession, createBillingPortal } from '@/lib/api';
+import { useUserStatus } from '@/hooks/useUserStatus';
+import { Settings as SettingsIcon, LogOut, ArrowLeft, Eye, EyeOff, CreditCard, Loader2 } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import BottomNavigation from '@/components/BottomNavigation';
 
 const Settings = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [authenticated, setAuthenticated] = useState(false);
+  const { status, fetchStatus } = useUserStatus();
+  const [billingLoading, setBillingLoading] = useState(false);
   
   // YNAB settings
   const [ynabToken, setYnabToken] = useState('');
@@ -32,7 +37,29 @@ const Settings = () => {
     setYnabToken(ynabConfig.token);
     setYnabBudgetId(ynabConfig.budgetId);
     setYnabAccountId(ynabConfig.accountId);
-  }, []);
+
+    // Handle Stripe redirect
+    const billingResult = searchParams.get('billing');
+    if (billingResult === 'success') {
+      toast({
+        title: 'Success',
+        description: 'Subscription activated successfully.',
+      });
+      // Refresh user status
+      fetchStatus();
+      // Remove query param
+      searchParams.delete('billing');
+      setSearchParams(searchParams, { replace: true });
+    } else if (billingResult === 'cancel') {
+      toast({
+        title: 'Checkout canceled',
+        description: 'Checkout canceled. You can activate your subscription anytime.',
+      });
+      // Remove query param
+      searchParams.delete('billing');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams, fetchStatus]);
 
   const handleSaveYNABSettings = () => {
     saveYNABConfig({
@@ -56,6 +83,38 @@ const Settings = () => {
     navigate('/login');
   };
 
+  const handleActivateSubscription = async () => {
+    setBillingLoading(true);
+    try {
+      const { url } = await createCheckoutSession();
+      window.location.href = url;
+    } catch (error) {
+      console.error('Checkout error:', error);
+      toast({
+        title: 'Error',
+        description: 'Something went wrong. Please try again later.',
+        variant: 'destructive',
+      });
+      setBillingLoading(false);
+    }
+  };
+
+  const handleManageBilling = async () => {
+    setBillingLoading(true);
+    try {
+      const { url } = await createBillingPortal();
+      window.location.href = url;
+    } catch (error) {
+      console.error('Portal error:', error);
+      toast({
+        title: 'Error',
+        description: 'Something went wrong. Please try again later.',
+        variant: 'destructive',
+      });
+      setBillingLoading(false);
+    }
+  };
+
   return (
     <MobileLayout>
       <div className="p-4 space-y-4 pb-24">
@@ -73,6 +132,51 @@ const Settings = () => {
             <h1 className="text-xl font-semibold">Settings</h1>
           </div>
         </div>
+
+        {/* Billing Section */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base font-medium">Billing</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {status === 'active' ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Your subscription is active.
+                </p>
+                <Button
+                  onClick={handleManageBilling}
+                  disabled={billingLoading}
+                  className="w-full"
+                >
+                  {billingLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : null}
+                  Manage billing
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  You are currently on the free trial.
+                </p>
+                <Button
+                  onClick={handleActivateSubscription}
+                  disabled={billingLoading}
+                  className="w-full"
+                >
+                  {billingLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : null}
+                  Activate subscription
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
         {/* YNAB Settings */}
         <Card>
