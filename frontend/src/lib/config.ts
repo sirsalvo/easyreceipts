@@ -1,14 +1,14 @@
-// Centralized configuration with default values
-// These defaults are used when localStorage is empty
+// Centralized configuration using Vite environment variables
+// Required: VITE_COGNITO_DOMAIN, VITE_COGNITO_CLIENT_ID, VITE_API_BASE_URL
 
 export const DEFAULT_CONFIG = {
   cognito: {
-    domain: 'easyreceipts-dev-ui-20260114.auth.eu-central-1.amazoncognito.com',
-    clientId: '64v1iehaqubrhi1s8oqkvfvbt6',
+    domain: import.meta.env.VITE_COGNITO_DOMAIN as string,
+    clientId: import.meta.env.VITE_COGNITO_CLIENT_ID as string,
     oauthFlow: 'authorization_code_no_pkce' as const,
   },
   api: {
-    baseUrl: 'https://uwpd0mb0ji.execute-api.eu-central-1.amazonaws.com',
+    baseUrl: import.meta.env.VITE_API_BASE_URL as string,
   },
 } as const;
 
