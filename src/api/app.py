@@ -59,20 +59,58 @@ UI_ORIGIN = os.getenv("UI_ORIGIN", "").strip()  # optional: force allow-origin
 
 DEFAULT_HEADERS = {"content-type": "application/json"}
 
+def _get_me(event: Dict[str, Any], origin: str) -> Dict[str, Any]:
+    from entitlements import get_or_create_user
+
+    claims = _claims(event)
+    sub = claims.get("sub")
+    email = claims.get("email")
+
+    if not sub:
+        return _json(401, {"error": "UNAUTHORIZED", "message": "Authentication required."}, origin)
+
+    user = get_or_create_user(sub, email)
+    c = user["_computed"]
+
+    return _json(
+        200,
+        {
+            "userId": sub,
+            "status": user["status"],
+            "trialStartedAt": user.get("trialStartedAt"),
+            "trialEndsAt": c["trialEndsAt"],
+            "daysRemaining": c["daysRemaining"],
+        },
+        origin,
+    )
+
 
 def _now_iso() -> str:
     return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat()
 
 def _cors(origin: str) -> Dict[str, str]:
     """Return CORS headers for the given origin."""
-    allowed = os.environ.get("CORS_ORIGINS", "*")
-    if allowed == "*" or origin in allowed.split(","):
+    allowed = os.environ.get("CORS_ORIGINS", "")
+    allowed_list = [o.strip() for o in allowed.split(",") if o.strip()]
+
+    # If no allowed origins configured, do not allow CORS.
+    if not allowed_list:
         return {
-            "Access-Control-Allow-Origin": origin or "*",
+            "Access-Control-Allow-Origin": "",
+            "Access-Control-Allow-Headers": "",
+            "Access-Control-Allow-Methods": "",
+            "Content-Type": "application/json",
+        }
+
+    # Allow only if the request origin matches one of the allowed origins.
+    if origin and origin in allowed_list:
+        return {
+            "Access-Control-Allow-Origin": origin,
             "Access-Control-Allow-Headers": "Content-Type,Authorization,X-Amz-Date,X-Api-Key,X-Amz-Security-Token",
             "Access-Control-Allow-Methods": "GET,POST,PUT,DELETE,OPTIONS",
             "Content-Type": "application/json",
         }
+
     return {
         "Access-Control-Allow-Origin": "",
         "Access-Control-Allow-Headers": "",
@@ -96,7 +134,7 @@ def _pick_allow_origin(event: Dict[str, Any]) -> str:
     if UI_ORIGIN:
         return UI_ORIGIN
     h = event.get("headers") or {}
-    return h.get("origin") or h.get("Origin") or "*"
+    return h.get("origin") or h.get("Origin") or ""
 
 
 def _path(event: Dict[str, Any]) -> str:
@@ -572,19 +610,16 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     path = _path(event)
     method = _method(event)
 
+    # ---- Trial / entitlement guard (blocks only premium endpoints)
+    from entitlements import entitlement_guard
+    blocked = entitlement_guard(event, origin, _json)
+    if blocked:
+        return blocked
+
     if method == "OPTIONS":
-        return {
-            "statusCode": 200,
-            "headers": {
-                "access-control-allow-origin": origin,
-                "access-control-allow-methods": "DELETE,GET,OPTIONS,POST,PUT",
-                "access-control-allow-headers": "authorization,content-type",
-                "access-control-max-age": "600",
-                "vary": "origin",
-                "content-type": "application/json",
-            },
-            "body": "{}",
-        }
+        headers = _cors(origin)
+        # HTTP API CORS may also add headers, but this keeps Lambda consistent and safe.
+        return {"statusCode": 200, "headers": headers, "body": "{}"}
 
     if path == "/auth/exchange" and method == "POST":
         payload = _read_json(event)
@@ -621,5 +656,20 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     if path.startswith("/receipts/") and method == "PUT":
         receipt_id = path.split("/", 2)[2]
         return _update_receipt(event, origin, receipt_id)
+
+    if path == "/me" and method == "GET":
+        return _get_me(event, origin)
+
+    if path == "/billing/checkout" and method == "POST":
+        from billing import create_checkout_session
+        return create_checkout_session(event, _json, origin)
+
+    if path == "/billing/portal" and method == "POST":
+        from billing import create_portal_session
+        return create_portal_session(event, _json, origin)
+
+    if path == "/webhooks/stripe" and method == "POST":
+        from stripe_webhook import handle_stripe_webhook
+        return handle_stripe_webhook(event, origin, _json)
 
     return _json(404, {"message": "Not Found"}, origin)
