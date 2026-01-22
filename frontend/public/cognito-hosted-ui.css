@@ -1,29 +1,9 @@
-/* ============================================
-   SPENDIFY - Cognito Hosted UI Custom CSS
-   Compatible with Amazon Cognito Classic UI
-   Max size: 3KB | Light theme
-   ============================================ */
-
-/* Color Palette (from Spendify design system):
-   Primary: #0891B2 (hsl 200 98% 39%)
-   Background: #E8EEF3 (hsl 209 40% 96%)
-   Card: #F7F9FB (hsl 210 40% 98%)
-   Foreground: #0F172A (hsl 222 47% 11%)
-   Border: #C4CFD9 (hsl 212 26% 83%)
-   Muted: #8A9AAD (hsl 215 20% 65%)
-*/
+/* SPENDIFY - Cognito Hosted UI Custom CSS */
+/* Compatible with Amazon Cognito Classic UI - Only allowed classes */
 
 /* === BACKGROUND === */
 .background-customizable {
   background-color: #E8EEF3;
-}
-
-/* === MAIN CONTAINER === */
-.modal-content {
-  background-color: #F7F9FB;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-  border: 1px solid #C4CFD9;
 }
 
 /* === BANNER/LOGO AREA === */
@@ -68,7 +48,6 @@
 .inputField-customizable:focus {
   border-color: #0891B2;
   outline: none;
-  box-shadow: 0 0 0 2px rgba(8,145,178,0.2);
 }
 
 /* === PRIMARY SUBMIT BUTTON === */
@@ -81,16 +60,10 @@
   font-weight: 600;
   padding: 12px 24px;
   height: 44px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
 }
 
 .submitButton-customizable:hover {
   background-color: #0E7490;
-}
-
-.submitButton-customizable:active {
-  background-color: #0C6A85;
 }
 
 /* === SOCIAL/IDP BUTTONS === */
@@ -103,25 +76,16 @@
   font-weight: 500;
   padding: 12px 24px;
   height: 44px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
 }
 
 .idpButton-customizable:hover {
   background-color: #E8EEF3;
-  border-color: #0891B2;
 }
 
 /* === LINKS === */
 .redirect-customizable {
   color: #0891B2;
   font-size: 14px;
-  text-decoration: none;
-}
-
-.redirect-customizable:hover {
-  text-decoration: underline;
-  color: #0E7490;
 }
 
 /* === ERROR MESSAGES === */
@@ -134,7 +98,7 @@
   padding: 12px;
 }
 
-/* === SOCIAL BUTTON DIVIDER === */
+/* === SOCIAL BUTTON === */
 .socialButton-customizable {
   border-radius: 8px;
   height: 44px;
@@ -144,13 +108,4 @@
 .logo-customizable {
   max-width: 180px;
   max-height: 60px;
-}
-
-/* === PASSWORD VISIBILITY === */
-.visible-password-button {
-  color: #8A9AAD;
-}
-
-.visible-password-button:hover {
-  color: #0891B2;
 }
