@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { parseAuthCallback, saveAuthSession, exchangeCodeForTokens, getOAuthFlow, verifyState } from '@/lib/auth';
 import { toast } from '@/hooks/use-toast';
+import { useUserStatus } from '@/hooks/useUserStatus';
 import { Loader2, AlertCircle, Copy, Check } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,10 +11,11 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const AuthCallback = () => {
   const navigate = useNavigate();
-  const [status, setStatus] = useState('Authenticating...');
+  const [authStatus, setAuthStatus] = useState('Authenticating...');
   const [error, setError] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const { fetchStatus } = useUserStatus();
 
   useEffect(() => {
     const handleCallback = async () => {
@@ -59,11 +61,14 @@ const AuthCallback = () => {
       const code = queryParams.get('code');
 
       if (code && (flow === 'authorization_code' || flow === 'authorization_code_no_pkce')) {
-        setStatus('Completing authentication...');
+        setAuthStatus('Completing authentication...');
         const result = await exchangeCodeForTokens(code);
 
         if (result.session) {
           saveAuthSession(result.session);
+          
+          // Fetch user status immediately after login
+          await fetchStatus();
           
           toast({
             title: 'Login successful',
@@ -93,6 +98,9 @@ const AuthCallback = () => {
       if (session) {
         saveAuthSession(session);
         
+        // Fetch user status immediately after login
+        await fetchStatus();
+        
         toast({
           title: 'Login successful',
           description: 'Authentication completed successfully',
@@ -116,7 +124,7 @@ const AuthCallback = () => {
     };
 
     handleCallback();
-  }, [navigate]);
+  }, [navigate, fetchStatus]);
 
   const handleCopyDetails = async () => {
     if (errorDetails) {
@@ -184,7 +192,7 @@ const AuthCallback = () => {
     <MobileLayout>
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-muted-foreground">{status}</p>
+        <p className="text-muted-foreground">{authStatus}</p>
       </div>
     </MobileLayout>
   );
