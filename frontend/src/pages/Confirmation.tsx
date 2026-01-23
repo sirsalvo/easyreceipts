@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getReceipt } from '@/lib/api';
+import { getReceipt, updateReceipt } from '@/lib/api';
 import { normalizeReceiptResponse, NormalizedReceipt } from '@/lib/receiptNormalizer';
 import { getYNABConfig, exportToYNAB } from '@/lib/ynab';
 import { formatCurrency } from '@/lib/utils';
@@ -187,6 +187,19 @@ const Confirmation = () => {
                       }], ynabConfig);
                       
                       if (result.success) {
+                        // Update backend with YNAB export timestamp
+                        try {
+                          await updateReceipt(receiptId!, {
+                            ynabExportedAt: new Date().toISOString(),
+                          });
+                        } catch (updateError) {
+                          console.warn('Failed to save YNAB export status:', updateError);
+                          toast({
+                            title: 'Export salvato su YNAB',
+                            description: 'Ma non è stato possibile salvare lo stato nel backend',
+                            variant: 'default',
+                          });
+                        }
                         toast({
                           title: 'Exported to YNAB',
                           description: 'Transaction exported successfully',
