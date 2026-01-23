@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from '@/hooks/use-toast';
 import { getReceipts, Receipt } from '@/lib/api';
 import { isAuthenticated } from '@/lib/auth';
@@ -12,6 +13,7 @@ import { getDraftOverride } from '@/lib/receiptDraftStore';
 import { setReceiptsCache } from '@/lib/receiptCache';
 import { formatCurrency } from '@/lib/utils';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { getYNABExports, YNABExportRecord } from '@/lib/ynabExportStore';
 import { 
   ArrowLeft, 
   Receipt as ReceiptIcon, 
@@ -20,11 +22,13 @@ import {
   RefreshCw,
   FileText,
   Loader2,
-  Download
+  Download,
+  CheckCircle2
 } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import BottomNavigation from '@/components/BottomNavigation';
 import { format } from 'date-fns';
+import { it } from 'date-fns/locale';
 
 type ReceiptStatus = 'CREATED' | 'EXTRACTED' | 'DRAFT' | 'NEW' | 'CONFIRMED' | 'FAILED';
 
@@ -49,6 +53,7 @@ const Receipts = () => {
   const [allReceipts, setAllReceipts] = useState<Receipt[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
+  const [ynabExports, setYnabExports] = useState<Record<string, YNABExportRecord>>({});
 
   const authenticated = isAuthenticated();
 
@@ -87,6 +92,9 @@ const Receipts = () => {
       setAllReceipts(sorted);
       setDisplayCount(PAGE_SIZE);
       setReceiptsCache(sorted);
+      
+      // Load YNAB export records
+      setYnabExports(getYNABExports());
     } catch (error) {
       toast({
         title: 'Error loading receipts',
@@ -169,6 +177,14 @@ const Receipts = () => {
       return format(new Date(dateString), 'MMM d, yyyy');
     } catch {
       return dateString;
+    }
+  };
+
+  const formatExportDate = (isoString: string) => {
+    try {
+      return format(new Date(isoString), 'd MMM yyyy', { locale: it });
+    } catch {
+      return 'Esportato';
     }
   };
 
@@ -292,6 +308,8 @@ const Receipts = () => {
               const status = (receipt.status as ReceiptStatus) || 'CREATED';
               const config = statusConfig[status] || statusConfig.CREATED;
               
+              const ynabExport = ynabExports[receipt.receiptId];
+              
               return (
                 <Card
                   key={receipt.receiptId}
@@ -301,13 +319,26 @@ const Receipts = () => {
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <h3 className="font-medium truncate">
                             {receipt.payee || 'Unknown Merchant'}
                           </h3>
                           <Badge variant={config.variant} className="shrink-0">
                             {config.label}
                           </Badge>
+                          {ynabExport && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-medium shrink-0">
+                                  <CheckCircle2 className="h-3 w-3" />
+                                  <span>YNAB</span>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Esportato il {formatExportDate(ynabExport.exportedAt)}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Calendar className="h-3.5 w-3.5" />

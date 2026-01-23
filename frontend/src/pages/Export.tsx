@@ -13,6 +13,7 @@ import { isAuthenticated } from '@/lib/auth';
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { cn, formatCurrency } from '@/lib/utils';
 import { getYNABConfig, exportToYNAB } from '@/lib/ynab';
+import { markAsExportedToYNAB } from '@/lib/ynabExportStore';
 import { 
   ArrowLeft, 
   Download, 
@@ -303,6 +304,9 @@ const Export = () => {
 
     try {
       const result = await exportToYNAB(selectedReceipts, config);
+      
+      // Mark receipts as exported to YNAB
+      markAsExportedToYNAB(selectedReceipts.map((r) => r.receiptId));
       
       toast({
         title: 'YNAB export complete',
