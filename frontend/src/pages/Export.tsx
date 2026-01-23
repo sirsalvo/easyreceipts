@@ -186,12 +186,19 @@ const Export = () => {
   };
 
   const filteredReceipts = getFilteredReceipts();
-  const selectedReceipts = filteredReceipts.filter((r) => selectedIds.has(r.receiptId));
+  
+  // For YNAB mode, exclude already exported receipts
+  const exportableReceipts = exportMode === 'ynab' 
+    ? filteredReceipts.filter((r) => !r.ynabExportedAt)
+    : filteredReceipts;
+  const alreadyExportedCount = filteredReceipts.filter((r) => !!r.ynabExportedAt).length;
+  
+  const selectedReceipts = exportableReceipts.filter((r) => selectedIds.has(r.receiptId));
 
   const handleSelectAll = (checked: boolean) => {
     setSelectAll(checked);
     if (checked) {
-      setSelectedIds(new Set(filteredReceipts.map((r) => r.receiptId)));
+      setSelectedIds(new Set(exportableReceipts.map((r) => r.receiptId)));
     } else {
       setSelectedIds(new Set());
     }
@@ -205,8 +212,23 @@ const Export = () => {
       newSet.delete(receiptId);
     }
     setSelectedIds(newSet);
-    setSelectAll(newSet.size === filteredReceipts.length);
+    setSelectAll(newSet.size === exportableReceipts.length);
   };
+
+  // Update selection when export mode changes
+  useEffect(() => {
+    if (exportMode === 'ynab') {
+      // Remove already exported receipts from selection
+      const newSelection = new Set(
+        [...selectedIds].filter((id) => {
+          const receipt = receipts.find((r) => r.receiptId === id);
+          return receipt && !receipt.ynabExportedAt;
+        })
+      );
+      setSelectedIds(newSelection);
+      setSelectAll(newSelection.size === exportableReceipts.length && exportableReceipts.length > 0);
+    }
+  }, [exportMode]);
 
   const handleExportCSV = () => {
     if (selectedReceipts.length === 0) {
@@ -520,7 +542,12 @@ const Export = () => {
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Export Summary</CardTitle>
                 <CardDescription>
-                  {selectedReceipts.length} of {filteredReceipts.length} receipts selected
+                  {selectedReceipts.length} of {exportableReceipts.length} receipts selected
+                  {exportMode === 'ynab' && alreadyExportedCount > 0 && (
+                    <span className="block text-xs mt-1">
+                      ({alreadyExportedCount} already exported to YNAB)
+                    </span>
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
@@ -547,6 +574,7 @@ const Export = () => {
                       id="selectAll"
                       checked={selectAll}
                       onCheckedChange={handleSelectAll}
+                      disabled={exportableReceipts.length === 0}
                     />
                     <Label htmlFor="selectAll" className="text-sm">
                       All
@@ -555,29 +583,37 @@ const Export = () => {
                 </div>
               </CardHeader>
               <CardContent className="space-y-2 max-h-[300px] overflow-y-auto">
-                {filteredReceipts.map((receipt) => (
-                  <div
-                    key={receipt.receiptId}
-                    className="flex items-center gap-3 p-3 rounded-lg bg-muted/20 hover:bg-muted/40 transition-colors"
-                  >
-                    <Checkbox
-                      checked={selectedIds.has(receipt.receiptId)}
-                      onCheckedChange={(checked) => 
-                        handleSelectReceipt(receipt.receiptId, checked as boolean)
-                      }
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">
-                        {receipt.payee || 'Unknown'}
-                      </p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Calendar className="h-3 w-3" />
-                        <span>{receipt.date || 'No date'}</span>
+                {exportableReceipts.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    {exportMode === 'ynab' 
+                      ? 'All receipts have already been exported to YNAB'
+                      : 'No receipts match the selected filters'}
+                  </p>
+                ) : (
+                  exportableReceipts.map((receipt) => (
+                    <div
+                      key={receipt.receiptId}
+                      className="flex items-center gap-3 p-3 rounded-lg bg-muted/20 hover:bg-muted/40 transition-colors"
+                    >
+                      <Checkbox
+                        checked={selectedIds.has(receipt.receiptId)}
+                        onCheckedChange={(checked) => 
+                          handleSelectReceipt(receipt.receiptId, checked as boolean)
+                        }
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">
+                          {receipt.payee || 'Unknown'}
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Calendar className="h-3 w-3" />
+                          <span>{receipt.date || 'No date'}</span>
+                        </div>
                       </div>
+                      <p className="font-semibold">{formatCurrency(receipt.total)}</p>
                     </div>
-                    <p className="font-semibold">{formatCurrency(receipt.total)}</p>
-                  </div>
-                ))}
+                  ))
+                )}
               </CardContent>
             </Card>
           </>
