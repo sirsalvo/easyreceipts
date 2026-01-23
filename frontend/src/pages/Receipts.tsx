@@ -27,7 +27,6 @@ import {
 import MobileLayout from '@/components/MobileLayout';
 import BottomNavigation from '@/components/BottomNavigation';
 import { format } from 'date-fns';
-import { it } from 'date-fns/locale';
 
 type ReceiptStatus = 'CREATED' | 'EXTRACTED' | 'DRAFT' | 'NEW' | 'CONFIRMED' | 'FAILED';
 
@@ -52,6 +51,7 @@ const Receipts = () => {
   const [allReceipts, setAllReceipts] = useState<Receipt[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
+  const [ynabFilter, setYnabFilter] = useState<'all' | 'exported' | 'not-exported'>('all');
 
   const authenticated = isAuthenticated();
 
@@ -102,16 +102,29 @@ const Receipts = () => {
     }
   };
 
-  // Filter receipts by search query
+  // Filter receipts by search query and YNAB export status
   const filteredReceipts = useMemo(() => {
-    if (!searchQuery) return allReceipts;
-    const query = searchQuery.toLowerCase();
-    return allReceipts.filter((receipt) =>
-      receipt.payee?.toLowerCase().includes(query) ||
-      receipt.category?.toLowerCase().includes(query) ||
-      receipt.receiptId.toLowerCase().includes(query)
-    );
-  }, [allReceipts, searchQuery]);
+    let result = allReceipts;
+    
+    // Apply YNAB filter
+    if (ynabFilter === 'exported') {
+      result = result.filter((r) => !!r.ynabExportedAt);
+    } else if (ynabFilter === 'not-exported') {
+      result = result.filter((r) => !r.ynabExportedAt);
+    }
+    
+    // Apply search filter
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter((receipt) =>
+        receipt.payee?.toLowerCase().includes(query) ||
+        receipt.category?.toLowerCase().includes(query) ||
+        receipt.receiptId.toLowerCase().includes(query)
+      );
+    }
+    
+    return result;
+  }, [allReceipts, searchQuery, ynabFilter]);
 
   // Paginated display (client-side)
   const displayedReceipts = useMemo(() => {
@@ -177,9 +190,9 @@ const Receipts = () => {
 
   const formatExportDate = (isoString: string) => {
     try {
-      return format(new Date(isoString), 'd MMM yyyy', { locale: it });
+      return format(new Date(isoString), 'MMM d, yyyy');
     } catch {
-      return 'Esportato';
+      return 'Exported';
     }
   };
 
@@ -252,7 +265,32 @@ const Receipts = () => {
           />
         </div>
 
-        {/* Stats */}
+        {/* YNAB Filter */}
+        <div className="flex gap-2">
+          <Button
+            variant={ynabFilter === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setYnabFilter('all')}
+          >
+            All
+          </Button>
+          <Button
+            variant={ynabFilter === 'exported' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setYnabFilter('exported')}
+          >
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+            Exported
+          </Button>
+          <Button
+            variant={ynabFilter === 'not-exported' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setYnabFilter('not-exported')}
+          >
+            Not exported
+          </Button>
+        </div>
+
         <div className="grid grid-cols-3 gap-3">
           <Card>
             <CardContent className="p-3 text-center">
@@ -322,13 +360,13 @@ const Receipts = () => {
                           {receipt.ynabExportedAt && (
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-medium shrink-0">
+                                <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-medium shrink-0">
                                   <CheckCircle2 className="h-3 w-3" />
                                   <span>YNAB</span>
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>Esportato il {formatExportDate(receipt.ynabExportedAt)}</p>
+                                <p>Exported to YNAB on {formatExportDate(receipt.ynabExportedAt)}</p>
                               </TooltipContent>
                             </Tooltip>
                           )}

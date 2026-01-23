@@ -192,6 +192,8 @@ const Confirmation = () => {
                           await updateReceipt(receiptId!, {
                             ynabExportedAt: new Date().toISOString(),
                           });
+                          // Update local state to disable button
+                          setReceipt({ ...receipt, ynabExportedAt: new Date().toISOString() });
                         } catch (updateError) {
                           console.warn('Failed to save YNAB export status:', updateError);
                           toast({
@@ -222,14 +224,17 @@ const Confirmation = () => {
                     }
                   }}
                   className="w-full"
-                  disabled={exporting}
+                  disabled={exporting || !!receipt.ynabExportedAt}
+                  variant={receipt.ynabExportedAt ? 'secondary' : 'default'}
                 >
                   {exporting ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : receipt.ynabExportedAt ? (
+                    <CheckCircle2 className="h-4 w-4 mr-2" />
                   ) : (
                     <Download className="h-4 w-4 mr-2" />
                   )}
-                  Export to YNAB
+                  {receipt.ynabExportedAt ? 'Already exported to YNAB' : 'Export to YNAB'}
                 </Button>
               )}
               
