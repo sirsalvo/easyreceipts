@@ -150,6 +150,7 @@ export interface Receipt {
   imageUrl?: string;
   createdAt?: string;
   updatedAt?: string;
+  ynabExportedAt?: string;
 }
 
 // Normalize receipt to ensure receiptId is always set and common fields are mapped
@@ -162,6 +163,7 @@ const normalizeReceipt = (receipt: Record<string, unknown>): Receipt => {
   const total = (receipt.total ?? receipt.total_amount ?? receipt.amount ?? receipt.grandTotal) as number | undefined;
   const vat = (receipt.vat ?? receipt.vat_amount ?? receipt.tax ?? receipt.taxAmount) as number | undefined;
   const vatRate = (receipt.vatRate ?? receipt.vat_rate ?? receipt.taxRate ?? receipt.tax_rate) as string | undefined;
+  const ynabExportedAt = (receipt.ynabExportedAt ?? receipt.ynab_exported_at) as string | undefined;
 
   return {
     ...receipt,
@@ -171,6 +173,7 @@ const normalizeReceipt = (receipt: Record<string, unknown>): Receipt => {
     ...(total !== undefined ? { total } : {}),
     ...(vat !== undefined ? { vat } : {}),
     ...(vatRate !== undefined ? { vatRate } : {}),
+    ...(ynabExportedAt !== undefined ? { ynabExportedAt } : {}),
   } as Receipt;
 };
 
@@ -235,14 +238,15 @@ export const getReceipt = async (receiptId: string): Promise<unknown> => {
 };
 
 export interface UpdateReceiptPayload {
-  status: 'DRAFT' | 'CONFIRMED';
-  payee: string;
-  date: string;
-  total: number;
-  vat: number;
-  vatRate: string;
-  category: string;
-  notes: string;
+  status?: 'DRAFT' | 'CONFIRMED';
+  payee?: string;
+  date?: string;
+  total?: number;
+  vat?: number;
+  vatRate?: string;
+  category?: string;
+  notes?: string;
+  ynabExportedAt?: string;
 }
 
 export const updateReceipt = async (
@@ -250,14 +254,16 @@ export const updateReceipt = async (
   payload: UpdateReceiptPayload
 ): Promise<unknown> => {
   // Some backends expect snake_case keys; send both to be safe.
-  const body = {
+  const body: Record<string, unknown> = {
     ...payload,
-    vat_rate: payload.vatRate,
-    vat_amount: payload.vat,
-    total_amount: payload.total,
-    receipt_date: payload.date,
-    merchant: payload.payee,
   };
+  
+  if (payload.vatRate !== undefined) body.vat_rate = payload.vatRate;
+  if (payload.vat !== undefined) body.vat_amount = payload.vat;
+  if (payload.total !== undefined) body.total_amount = payload.total;
+  if (payload.date !== undefined) body.receipt_date = payload.date;
+  if (payload.payee !== undefined) body.merchant = payload.payee;
+  if (payload.ynabExportedAt !== undefined) body.ynab_exported_at = payload.ynabExportedAt;
 
   return apiRequest<unknown>(`/receipts/${receiptId}`, {
     method: 'PUT',

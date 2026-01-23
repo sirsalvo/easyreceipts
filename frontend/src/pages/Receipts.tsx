@@ -13,7 +13,6 @@ import { getDraftOverride } from '@/lib/receiptDraftStore';
 import { setReceiptsCache } from '@/lib/receiptCache';
 import { formatCurrency } from '@/lib/utils';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
-import { getYNABExports, YNABExportRecord } from '@/lib/ynabExportStore';
 import { 
   ArrowLeft, 
   Receipt as ReceiptIcon, 
@@ -53,7 +52,6 @@ const Receipts = () => {
   const [allReceipts, setAllReceipts] = useState<Receipt[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
-  const [ynabExports, setYnabExports] = useState<Record<string, YNABExportRecord>>({});
 
   const authenticated = isAuthenticated();
 
@@ -92,9 +90,6 @@ const Receipts = () => {
       setAllReceipts(sorted);
       setDisplayCount(PAGE_SIZE);
       setReceiptsCache(sorted);
-      
-      // Load YNAB export records
-      setYnabExports(getYNABExports());
     } catch (error) {
       toast({
         title: 'Error loading receipts',
@@ -308,8 +303,6 @@ const Receipts = () => {
               const status = (receipt.status as ReceiptStatus) || 'CREATED';
               const config = statusConfig[status] || statusConfig.CREATED;
               
-              const ynabExport = ynabExports[receipt.receiptId];
-              
               return (
                 <Card
                   key={receipt.receiptId}
@@ -326,7 +319,7 @@ const Receipts = () => {
                           <Badge variant={config.variant} className="shrink-0">
                             {config.label}
                           </Badge>
-                          {ynabExport && (
+                          {receipt.ynabExportedAt && (
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-medium shrink-0">
@@ -335,7 +328,7 @@ const Receipts = () => {
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent>
-                                <p>Esportato il {formatExportDate(ynabExport.exportedAt)}</p>
+                                <p>Esportato il {formatExportDate(receipt.ynabExportedAt)}</p>
                               </TooltipContent>
                             </Tooltip>
                           )}

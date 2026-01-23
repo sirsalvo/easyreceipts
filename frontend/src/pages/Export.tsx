@@ -8,7 +8,7 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from '@/hooks/use-toast';
-import { getReceipts, Receipt } from '@/lib/api';
+import { getReceipts, Receipt, updateReceipt } from '@/lib/api';
 import { isAuthenticated } from '@/lib/auth';
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { cn, formatCurrency } from '@/lib/utils';
@@ -305,7 +305,15 @@ const Export = () => {
     try {
       const result = await exportToYNAB(selectedReceipts, config);
       
-      // Mark receipts as exported to YNAB
+      // Mark receipts as exported to YNAB (save to backend)
+      const exportedAt = new Date().toISOString();
+      await Promise.all(
+        selectedReceipts.map((r) =>
+          updateReceipt(r.receiptId, { ynabExportedAt: exportedAt })
+        )
+      );
+      
+      // Also update local storage for immediate UI feedback
       markAsExportedToYNAB(selectedReceipts.map((r) => r.receiptId));
       
       toast({
