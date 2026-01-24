@@ -1,14 +1,13 @@
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
-import { isAuthenticated } from '@/lib/auth';
 import { Upload, FileText, Receipt } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import BottomNavigation from '@/components/BottomNavigation';
+import { A2HSBanner } from '@/components/A2HSBanner';
 import appIcon from '@/assets/app-icon.png';
 
 const Index = () => {
   const navigate = useNavigate();
-  const authenticated = isAuthenticated();
 
   return (
     <MobileLayout>
@@ -25,6 +24,8 @@ const Index = () => {
             <p className="text-sm text-muted-foreground">Scan & Manage</p>
           </div>
         </div>
+
+        <A2HSBanner />
 
         {/* Main Actions */}
         <div className="space-y-4">
