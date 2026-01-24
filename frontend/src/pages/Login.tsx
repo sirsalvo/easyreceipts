@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { isAuthenticated, getCognitoLoginUrl } from '@/lib/auth';
-import { LogIn, Loader2 } from 'lucide-react';
+import { LogIn, Loader2, Camera, CheckCircle, Download } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import appIcon from '@/assets/app-icon.png';
 
@@ -82,16 +82,22 @@ const Login = () => {
           <p className="text-sm text-muted-foreground">With Spendify you can:</p>
           <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
             <div className="p-3 rounded-lg bg-muted/30">
-              <span className="block font-medium text-foreground">📸</span>
-              Scan
+              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center mx-auto mb-2">
+                <Camera className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <span className="font-medium text-foreground">Fast capture</span>
             </div>
             <div className="p-3 rounded-lg bg-muted/30">
-              <span className="block font-medium text-foreground">✏️</span>
-              Edit
+              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center mx-auto mb-2">
+                <CheckCircle className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <span className="font-medium text-foreground">Review & correct</span>
             </div>
             <div className="p-3 rounded-lg bg-muted/30">
-              <span className="block font-medium text-foreground">📤</span>
-              Export
+              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center mx-auto mb-2">
+                <Download className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <span className="font-medium text-foreground">Export your way</span>
             </div>
           </div>
         </div>
