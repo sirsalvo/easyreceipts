@@ -16,11 +16,18 @@ const BillingBanner = () => {
       window.location.href = url;
     } catch (error) {
       console.error('Checkout error:', error);
-      toast({
-        title: 'Error',
-        description: 'Something went wrong. Please try again later.',
-        variant: 'destructive',
-      });
+      const errorMessage = error instanceof Error ? error.message : '';
+      
+      // If not a session/auth error, show specific checkout error
+      if (!errorMessage.includes('Session expired') && !errorMessage.includes('login')) {
+        toast({
+          title: 'Checkout error',
+          description: 'Unable to start checkout. Please try again or contact support.',
+          variant: 'destructive',
+        });
+        setRedirecting(false);
+      }
+      // If session expired, api.ts already handles redirect - just reset state
       setRedirecting(false);
     }
   };
