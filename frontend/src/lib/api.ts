@@ -146,12 +146,66 @@ export interface Receipt {
   vat?: number;
   vatRate?: string;
   category?: string;
+  categoryId?: string;
   notes?: string;
   imageUrl?: string;
   createdAt?: string;
   updatedAt?: string;
   ynabExportedAt?: string;
 }
+
+// ============= Category API =============
+
+export interface Category {
+  id: string;
+  name: string;
+  color?: string;
+}
+
+export const getCategories = async (): Promise<Category[]> => {
+  const response = await apiRequest<unknown>('/categories');
+  
+  // Handle different response formats
+  if (Array.isArray(response)) {
+    return response as Category[];
+  }
+  
+  const obj = response as Record<string, unknown>;
+  if (Array.isArray(obj.categories)) {
+    return obj.categories as Category[];
+  }
+  if (Array.isArray(obj.items)) {
+    return obj.items as Category[];
+  }
+  if (Array.isArray(obj.data)) {
+    return obj.data as Category[];
+  }
+  
+  return [];
+};
+
+export const createCategory = async (
+  payload: { name: string; color?: string }
+): Promise<Category> => {
+  return apiRequest<Category>('/categories', {
+    method: 'POST',
+    body: payload,
+  });
+};
+
+export const updateCategory = async (
+  categoryId: string,
+  payload: { name?: string; color?: string }
+): Promise<Category> => {
+  return apiRequest<Category>(`/categories/${categoryId}`, {
+    method: 'PUT',
+    body: payload,
+  });
+};
+
+export const deleteCategory = async (categoryId: string): Promise<void> => {
+  await apiRequest<void>(`/categories/${categoryId}`, { method: 'DELETE' });
+};
 
 // Normalize receipt to ensure receiptId is always set and common fields are mapped
 const normalizeReceipt = (receipt: Record<string, unknown>): Receipt => {
@@ -245,6 +299,7 @@ export interface UpdateReceiptPayload {
   vat?: number;
   vatRate?: string;
   category?: string;
+  categoryId?: string | null;
   notes?: string;
   ynabExportedAt?: string;
 }
@@ -264,6 +319,7 @@ export const updateReceipt = async (
   if (payload.date !== undefined) body.receipt_date = payload.date;
   if (payload.payee !== undefined) body.merchant = payload.payee;
   if (payload.ynabExportedAt !== undefined) body.ynab_exported_at = payload.ynabExportedAt;
+  if (payload.categoryId !== undefined) body.category_id = payload.categoryId;
 
   return apiRequest<unknown>(`/receipts/${receiptId}`, {
     method: 'PUT',

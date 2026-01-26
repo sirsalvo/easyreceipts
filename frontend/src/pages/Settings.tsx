@@ -16,6 +16,7 @@ import { setUserState } from '@/lib/userStore';
 import { Settings as SettingsIcon, LogOut, ArrowLeft, Eye, EyeOff, CreditCard, Loader2 } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import BottomNavigation from '@/components/BottomNavigation';
+import CategoriesSettings from '@/components/CategoriesSettings';
 
 type ActivationState = 'idle' | 'activating' | 'success' | 'timeout' | 'error';
 
@@ -286,6 +287,9 @@ const Settings = () => {
             )}
           </CardContent>
         </Card>
+
+        {/* Categories */}
+        <CategoriesSettings />
 
         {/* YNAB Settings */}
         <Card>

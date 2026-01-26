@@ -13,6 +13,7 @@ import { getDraftOverride } from '@/lib/receiptDraftStore';
 import { setReceiptsCache } from '@/lib/receiptCache';
 import { formatCurrency } from '@/lib/utils';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+import { useCategories } from '@/hooks/useCategories';
 import { 
   ArrowLeft, 
   Receipt as ReceiptIcon, 
@@ -45,6 +46,7 @@ const PAGE_SIZE = 20;
 
 const Receipts = () => {
   const navigate = useNavigate();
+  const { categories, getCategoryById } = useCategories();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -371,15 +373,32 @@ const Receipts = () => {
                             </Tooltip>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Calendar className="h-3.5 w-3.5" />
-                          <span>{formatDate(receipt.date || receipt.createdAt)}</span>
-                          {receipt.category && (
-                            <>
-                              <span>•</span>
-                              <span>{receipt.category}</span>
-                            </>
-                          )}
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3.5 w-3.5" />
+                            <span>{formatDate(receipt.date || receipt.createdAt)}</span>
+                          </div>
+                          {receipt.categoryId && (() => {
+                            const category = getCategoryById(receipt.categoryId);
+                            if (category) {
+                              return (
+                                <div
+                                  className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs font-medium"
+                                  style={{ 
+                                    backgroundColor: category.color ? `${category.color}20` : 'hsl(var(--muted))',
+                                    color: category.color || 'hsl(var(--muted-foreground))'
+                                  }}
+                                >
+                                  <div
+                                    className="w-2 h-2 rounded-full"
+                                    style={{ backgroundColor: category.color || 'currentColor' }}
+                                  />
+                                  <span>{category.name}</span>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
                       </div>
                       <p className="font-semibold text-lg shrink-0">

@@ -18,6 +18,7 @@ import { getReceipt, updateReceipt, UpdateReceiptPayload } from '@/lib/api';
 import { normalizeReceiptResponse, NormalizedReceipt } from '@/lib/receiptNormalizer';
 import { getCachedReceipt, updateCachedReceipt } from '@/lib/receiptCache';
 import { clearDraftOverride, getDraftOverride, setDraftOverride } from '@/lib/receiptDraftStore';
+import { useCategories } from '@/hooks/useCategories';
 import { ArrowLeft, Loader2, Save, Check, AlertCircle, Maximize2, X } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import BottomNavigation from '@/components/BottomNavigation';
@@ -28,7 +29,7 @@ interface FormData {
   payee: string;
   vat: string;
   vatRate: string;
-  category: string;
+  categoryId: string;
   notes: string;
 }
 
@@ -38,25 +39,16 @@ interface FormErrors {
   payee?: string;
   vat?: string;
   vatRate?: string;
-  category?: string;
 }
 
 const VAT_RATES = ['0', '4', '5', '10', '22'];
-const CATEGORIES = [
-  'General',
-  'Food & Dining',
-  'Transportation',
-  'Utilities',
-  'Office Supplies',
-  'Travel',
-  'Entertainment',
-  'Healthcare',
-  'Other',
-];
+
+const UNASSIGNED_VALUE = '__unassigned__';
 
 const Review = () => {
   const navigate = useNavigate();
   const { receiptId } = useParams<{ receiptId: string }>();
+  const { categories, loading: categoriesLoading, getCategoryById } = useCategories();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [receipt, setReceipt] = useState<NormalizedReceipt | null>(null);
@@ -66,7 +58,7 @@ const Review = () => {
     payee: '',
     vat: '',
     vatRate: '22',
-    category: 'General',
+    categoryId: '',
     notes: '',
   });
   const [errors, setErrors] = useState<FormErrors>({});
@@ -116,13 +108,16 @@ const Review = () => {
         setReceipt(normalized);
 
         // Prefill form with extracted/confirmed values
+        // Try to get categoryId from the response
+        const rawCategoryId = (apiObj.categoryId ?? apiObj.category_id ?? best.categoryId) as string | undefined;
+        
         setFormData({
           date: normalized.date || '',
           total: normalized.total !== null ? String(normalized.total).replace('.', ',') : '',
           payee: normalized.payee || '',
           vat: normalized.vat !== null ? String(normalized.vat).replace('.', ',') : '',
           vatRate: normalized.vatRate || '22',
-          category: normalized.category || 'General',
+          categoryId: rawCategoryId || '',
           notes: normalized.notes || '',
         });
       } catch (error) {
@@ -166,9 +161,7 @@ const Review = () => {
       newErrors.vatRate = 'VAT rate is required';
     }
 
-    if (!formData.category) {
-      newErrors.category = 'Category is required';
-    }
+    // Category is optional - no validation needed
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -204,7 +197,7 @@ const Review = () => {
         total: parseFloat(formData.total.replace(',', '.')),
         vat: parseFloat(formData.vat.replace(',', '.')),
         vatRate: formData.vatRate,
-        category: formData.category,
+        categoryId: formData.categoryId || null,
         notes: formData.notes.trim(),
       };
 
@@ -220,7 +213,7 @@ const Review = () => {
         date: payload.date,
         vat: payload.vat,
         vatRate: payload.vatRate,
-        category: payload.category,
+        categoryId: payload.categoryId,
         notes: payload.notes,
         status: payload.status,
       });
@@ -418,27 +411,39 @@ const Review = () => {
 
             {/* Category */}
             <div className="space-y-2">
-              <Label className={errors.category ? 'text-destructive' : ''}>
-                Category *
-              </Label>
+              <Label>Category</Label>
               <Select
-                value={formData.category}
-                onValueChange={(value) => handleInputChange('category', value)}
+                value={formData.categoryId || UNASSIGNED_VALUE}
+                onValueChange={(value) => handleInputChange('categoryId', value === UNASSIGNED_VALUE ? '' : value)}
+                disabled={categoriesLoading}
               >
-                <SelectTrigger className={errors.category ? 'border-destructive' : ''}>
-                  <SelectValue placeholder="Select category" />
+                <SelectTrigger>
+                  <SelectValue placeholder={categoriesLoading ? 'Loading...' : 'Select category'}>
+                    {formData.categoryId 
+                      ? getCategoryById(formData.categoryId)?.name || 'Unassigned'
+                      : 'Unassigned'}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
+                  <SelectItem value={UNASSIGNED_VALUE}>Unassigned</SelectItem>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      <div className="flex items-center gap-2">
+                        {cat.color && (
+                          <div
+                            className="w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ backgroundColor: cat.color }}
+                          />
+                        )}
+                        <span>{cat.name}</span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {errors.category && (
-                <p className="text-xs text-destructive">{errors.category}</p>
-              )}
+              <p className="text-xs text-muted-foreground">
+                Categories are internal only and never exported to YNAB.
+              </p>
             </div>
 
             {/* Notes */}

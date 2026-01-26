@@ -8,6 +8,7 @@ import { normalizeReceiptResponse, NormalizedReceipt } from '@/lib/receiptNormal
 import { getYNABConfig, exportToYNAB } from '@/lib/ynab';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { useCategories } from '@/hooks/useCategories';
 import { 
   CheckCircle2, 
   Plus, 
@@ -26,8 +27,10 @@ import BottomNavigation from '@/components/BottomNavigation';
 const Confirmation = () => {
   const navigate = useNavigate();
   const { receiptId } = useParams<{ receiptId: string }>();
+  const { getCategoryById } = useCategories();
   const [loading, setLoading] = useState(true);
   const [receipt, setReceipt] = useState<NormalizedReceipt | null>(null);
+  const [receiptCategoryId, setReceiptCategoryId] = useState<string | undefined>();
   const [exporting, setExporting] = useState(false);
   const [showFullImage, setShowFullImage] = useState(false);
   
@@ -45,6 +48,10 @@ const Confirmation = () => {
         const response = await getReceipt(receiptId);
         const normalized = normalizeReceiptResponse(response);
         setReceipt(normalized);
+        // Extract categoryId from raw response
+        const rawResponse = response as Record<string, unknown>;
+        const catId = (rawResponse.categoryId ?? rawResponse.category_id) as string | undefined;
+        setReceiptCategoryId(catId);
       } catch (error) {
         console.error('Error fetching receipt:', error);
       } finally {
@@ -129,12 +136,24 @@ const Confirmation = () => {
                   )}
                 </div>
 
-                {receipt.category && (
-                  <div className="pt-2 border-t border-border">
-                    <p className="text-xs text-muted-foreground">Category</p>
-                    <p className="font-medium">{receipt.category}</p>
-                  </div>
-                )}
+                {receiptCategoryId && (() => {
+                  const category = getCategoryById(receiptCategoryId);
+                  if (category) {
+                    return (
+                      <div className="pt-2 border-t border-border">
+                        <p className="text-xs text-muted-foreground">Category</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: category.color || '#6B7280' }}
+                          />
+                          <p className="font-medium">{category.name}</p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
                 {/* Receipt Image Thumbnail */}
                 {receipt.imageUrl && (
                   <div className="pt-3 border-t border-border">
