@@ -27,7 +27,7 @@ import BottomNavigation from '@/components/BottomNavigation';
 const Confirmation = () => {
   const navigate = useNavigate();
   const { receiptId } = useParams<{ receiptId: string }>();
-  const { getCategoryById } = useCategories();
+  const { categories } = useCategories();
   const [loading, setLoading] = useState(true);
   const [receipt, setReceipt] = useState<NormalizedReceipt | null>(null);
   const [receiptCategoryId, setReceiptCategoryId] = useState<string | undefined>();
@@ -136,24 +136,15 @@ const Confirmation = () => {
                   )}
                 </div>
 
-                {receiptCategoryId && (() => {
-                  const category = getCategoryById(receiptCategoryId);
-                  if (category) {
-                    return (
-                      <div className="pt-2 border-t border-border">
-                        <p className="text-xs text-muted-foreground">Category</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <div
-                            className="w-3 h-3 rounded-full"
-                            style={{ backgroundColor: category.color || '#6B7280' }}
-                          />
-                          <p className="font-medium">{category.name}</p>
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
+                {receiptCategoryId && categories.includes(receiptCategoryId) && (
+                  <div className="pt-2 border-t border-border">
+                    <p className="text-xs text-muted-foreground">Category</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="w-3 h-3 rounded-full bg-primary" />
+                      <p className="font-medium">{receiptCategoryId}</p>
+                    </div>
+                  </div>
+                )}
                 {/* Receipt Image Thumbnail */}
                 {receipt.imageUrl && (
                   <div className="pt-3 border-t border-border">

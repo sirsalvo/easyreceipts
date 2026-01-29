@@ -148,79 +148,76 @@ export interface Receipt {
   ynabExportedAt?: string;
 }
 
-// ============= Category API =============
+// ============= Category API (string[] based) =============
 
-export interface Category {
-  id: string;
-  name: string;
-  color?: string;
-}
-
-export const getCategories = async (): Promise<Category[]> => {
+export const getCategories = async (): Promise<string[]> => {
   const response = await apiRequest<unknown>('/categories');
   
-  // Handle different response formats
+  // Handle different response formats - extract string array
   if (Array.isArray(response)) {
-    return response as Category[];
+    // Could be string[] directly or object[]
+    if (response.length === 0) return [];
+    if (typeof response[0] === 'string') {
+      return response as string[];
+    }
+    // If objects, extract names
+    return response.map((item: unknown) => {
+      if (typeof item === 'string') return item;
+      const obj = item as Record<string, unknown>;
+      return (obj.name || obj.category || '') as string;
+    }).filter(Boolean);
   }
   
   const obj = response as Record<string, unknown>;
+  
+  // Check for { categories: string[] } format
   if (Array.isArray(obj.categories)) {
-    return obj.categories as Category[];
+    const arr = obj.categories;
+    if (arr.length === 0) return [];
+    if (typeof arr[0] === 'string') return arr as string[];
+    return arr.map((item: unknown) => {
+      if (typeof item === 'string') return item;
+      const o = item as Record<string, unknown>;
+      return (o.name || o.category || '') as string;
+    }).filter(Boolean);
   }
+  
   if (Array.isArray(obj.items)) {
-    return obj.items as Category[];
+    const arr = obj.items;
+    if (arr.length === 0) return [];
+    if (typeof arr[0] === 'string') return arr as string[];
+    return arr.map((item: unknown) => {
+      if (typeof item === 'string') return item;
+      const o = item as Record<string, unknown>;
+      return (o.name || o.category || '') as string;
+    }).filter(Boolean);
   }
+  
   if (Array.isArray(obj.data)) {
-    return obj.data as Category[];
+    const arr = obj.data;
+    if (arr.length === 0) return [];
+    if (typeof arr[0] === 'string') return arr as string[];
+    return arr.map((item: unknown) => {
+      if (typeof item === 'string') return item;
+      const o = item as Record<string, unknown>;
+      return (o.name || o.category || '') as string;
+    }).filter(Boolean);
   }
   
   return [];
 };
 
-export const createCategory = async (
-  payload: { name: string; color?: string }
-): Promise<Category> => {
-  return apiRequest<Category>('/categories', {
-    method: 'POST',
-    body: payload,
-  });
-};
-
-export const updateCategory = async (
-  categoryId: string,
-  payload: { name?: string; color?: string }
-): Promise<Category> => {
-  return apiRequest<Category>(`/categories/${categoryId}`, {
+// Save entire categories array via PUT
+export const saveCategories = async (categories: string[]): Promise<string[]> => {
+  // Clean input: trim and filter empty
+  const cleaned = categories.map(c => c.trim()).filter(Boolean);
+  
+  await apiRequest<unknown>('/categories', {
     method: 'PUT',
-    body: payload,
-  });
-};
-
-// Save entire categories array (used for add/update/delete operations)
-export const saveCategories = async (categories: Category[]): Promise<Category[]> => {
-  const response = await apiRequest<unknown>('/categories', {
-    method: 'PUT',
-    body: categories,
+    body: { categories: cleaned },
   });
   
-  // Handle different response formats
-  if (Array.isArray(response)) {
-    return response as Category[];
-  }
-  
-  const obj = response as Record<string, unknown>;
-  if (Array.isArray(obj.categories)) {
-    return obj.categories as Category[];
-  }
-  if (Array.isArray(obj.items)) {
-    return obj.items as Category[];
-  }
-  if (Array.isArray(obj.data)) {
-    return obj.data as Category[];
-  }
-  
-  return categories;
+  return cleaned;
 };
 
 // Normalize receipt to ensure receiptId is always set and common fields are mapped

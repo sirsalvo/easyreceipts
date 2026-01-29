@@ -1,25 +1,18 @@
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  getCategories, 
-  createCategory, 
-  updateCategory, 
-  saveCategories,
-  Category 
-} from '@/lib/api';
+import { getCategories, saveCategories } from '@/lib/api';
 
 interface UseCategoriesReturn {
-  categories: Category[];
+  categories: string[];
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
-  addCategory: (name: string, color?: string) => Promise<Category | null>;
-  editCategory: (id: string, name: string, color?: string) => Promise<boolean>;
-  removeCategory: (id: string) => Promise<boolean>;
-  getCategoryById: (id: string | undefined) => Category | undefined;
+  addCategory: (name: string) => Promise<boolean>;
+  editCategory: (oldName: string, newName: string) => Promise<boolean>;
+  removeCategory: (name: string) => Promise<boolean>;
 }
 
 export const useCategories = (): UseCategoriesReturn => {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -28,7 +21,8 @@ export const useCategories = (): UseCategoriesReturn => {
       setLoading(true);
       setError(null);
       const data = await getCategories();
-      setCategories(data);
+      // Filter out empty strings
+      setCategories(data.filter(Boolean));
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       // Provide a user-friendly message for common errors
@@ -47,48 +41,56 @@ export const useCategories = (): UseCategoriesReturn => {
     fetchCategories();
   }, [fetchCategories]);
 
-  const addCategory = useCallback(async (name: string, color?: string): Promise<Category | null> => {
-    try {
-      const newCategory = await createCategory({ name, color });
-      setCategories(prev => [...prev, newCategory]);
-      return newCategory;
-    } catch (err) {
-      console.error('Error creating category:', err);
-      throw err;
+  const addCategory = useCallback(async (name: string): Promise<boolean> => {
+    const trimmed = name.trim();
+    if (!trimmed) return false;
+    
+    // Check for duplicates
+    if (categories.includes(trimmed)) {
+      throw new Error('Category already exists');
     }
-  }, []);
-
-  const editCategory = useCallback(async (id: string, name: string, color?: string): Promise<boolean> => {
+    
     try {
-      const updated = await updateCategory(id, { name, color });
-      setCategories(prev => prev.map(c => c.id === id ? updated : c));
+      const updated = [...categories, trimmed];
+      await saveCategories(updated);
+      setCategories(updated);
       return true;
     } catch (err) {
-      console.error('Error updating category:', err);
+      console.error('Error adding category:', err);
       throw err;
     }
-  }, []);
+  }, [categories]);
 
-  const removeCategory = useCallback(async (id: string): Promise<boolean> => {
+  const editCategory = useCallback(async (oldName: string, newName: string): Promise<boolean> => {
+    const trimmed = newName.trim();
+    if (!trimmed) return false;
+    
+    // Check for duplicates (if renaming to different name)
+    if (oldName !== trimmed && categories.includes(trimmed)) {
+      throw new Error('Category already exists');
+    }
+    
     try {
-      // Get current categories and filter out the one to delete
-      const updatedCategories = categories.filter(c => c.id !== id);
-      
-      // Save the updated array via PUT /categories
-      await saveCategories(updatedCategories);
-      
-      // Update local state
-      setCategories(updatedCategories);
+      const updated = categories.map(c => c === oldName ? trimmed : c);
+      await saveCategories(updated);
+      setCategories(updated);
+      return true;
+    } catch (err) {
+      console.error('Error editing category:', err);
+      throw err;
+    }
+  }, [categories]);
+
+  const removeCategory = useCallback(async (name: string): Promise<boolean> => {
+    try {
+      const updated = categories.filter(c => c !== name);
+      await saveCategories(updated);
+      setCategories(updated);
       return true;
     } catch (err) {
       console.error('Error removing category:', err);
       throw err;
     }
-  }, [categories]);
-
-  const getCategoryById = useCallback((id: string | undefined): Category | undefined => {
-    if (!id) return undefined;
-    return categories.find(c => c.id === id);
   }, [categories]);
 
   return {
@@ -99,6 +101,5 @@ export const useCategories = (): UseCategoriesReturn => {
     addCategory,
     editCategory,
     removeCategory,
-    getCategoryById,
   };
 };

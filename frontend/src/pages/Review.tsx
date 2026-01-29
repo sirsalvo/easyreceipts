@@ -59,7 +59,7 @@ const UNASSIGNED_VALUE = '__unassigned__';
 const Review = () => {
   const navigate = useNavigate();
   const { receiptId } = useParams<{ receiptId: string }>();
-  const { categories, loading: categoriesLoading, getCategoryById } = useCategories();
+  const { categories, loading: categoriesLoading } = useCategories();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -472,23 +472,18 @@ const Review = () => {
               >
                 <SelectTrigger>
                   <SelectValue placeholder={categoriesLoading ? 'Loading...' : 'Select category'}>
-                    {formData.categoryId 
-                      ? getCategoryById(formData.categoryId)?.name || 'Unassigned'
+                    {formData.categoryId && categories.includes(formData.categoryId)
+                      ? formData.categoryId
                       : 'Unassigned'}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={UNASSIGNED_VALUE}>Unassigned</SelectItem>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat.id} value={cat.id}>
+                  {categories.map((categoryName) => (
+                    <SelectItem key={categoryName} value={categoryName}>
                       <div className="flex items-center gap-2">
-                        {cat.color && (
-                          <div
-                            className="w-2.5 h-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: cat.color }}
-                          />
-                        )}
-                        <span>{cat.name}</span>
+                        <div className="w-2.5 h-2.5 rounded-full shrink-0 bg-primary" />
+                        <span>{categoryName}</span>
                       </div>
                     </SelectItem>
                   ))}
