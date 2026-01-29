@@ -129,17 +129,15 @@ const Confirmation = () => {
                   )}
                 </div>
 
-                {receipt.categoryId && (
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 flex items-center justify-center shrink-0">
-                      <div className="w-3 h-3 rounded-full bg-primary" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Category</p>
-                      <p className="font-medium">{receipt.categoryId}</p>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                    <div className="w-3 h-3 rounded-full bg-primary" />
                   </div>
-                )}
+                  <div>
+                    <p className="text-xs text-muted-foreground">Category</p>
+                    <p className="font-medium">{receipt.category || 'Unassigned'}</p>
+                  </div>
+                </div>
                 {/* Receipt Image Thumbnail */}
                 {receipt.imageUrl && (
                   <div className="pt-3 border-t border-border">
