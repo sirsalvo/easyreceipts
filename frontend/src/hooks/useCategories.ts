@@ -3,7 +3,7 @@ import {
   getCategories, 
   createCategory, 
   updateCategory, 
-  deleteCategory,
+  saveCategories,
   Category 
 } from '@/lib/api';
 
@@ -71,14 +71,20 @@ export const useCategories = (): UseCategoriesReturn => {
 
   const removeCategory = useCallback(async (id: string): Promise<boolean> => {
     try {
-      await deleteCategory(id);
-      setCategories(prev => prev.filter(c => c.id !== id));
+      // Get current categories and filter out the one to delete
+      const updatedCategories = categories.filter(c => c.id !== id);
+      
+      // Save the updated array via PUT /categories
+      await saveCategories(updatedCategories);
+      
+      // Update local state
+      setCategories(updatedCategories);
       return true;
     } catch (err) {
-      console.error('Error deleting category:', err);
+      console.error('Error removing category:', err);
       throw err;
     }
-  }, []);
+  }, [categories]);
 
   const getCategoryById = useCallback((id: string | undefined): Category | undefined => {
     if (!id) return undefined;

@@ -124,7 +124,7 @@ const CategoriesSettings = () => {
     setDeleting(true);
     try {
       await removeCategory(categoryToDelete.id);
-      toast({ title: 'Category deleted' });
+      toast({ title: 'Category removed' });
       setDeleteDialogOpen(false);
       setCategoryToDelete(null);
     } catch (err) {

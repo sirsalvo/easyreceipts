@@ -197,8 +197,30 @@ export const updateCategory = async (
   });
 };
 
-export const deleteCategory = async (categoryId: string): Promise<void> => {
-  await apiRequest<void>(`/categories/${categoryId}`, { method: 'DELETE' });
+// Save entire categories array (used for add/update/delete operations)
+export const saveCategories = async (categories: Category[]): Promise<Category[]> => {
+  const response = await apiRequest<unknown>('/categories', {
+    method: 'PUT',
+    body: categories,
+  });
+  
+  // Handle different response formats
+  if (Array.isArray(response)) {
+    return response as Category[];
+  }
+  
+  const obj = response as Record<string, unknown>;
+  if (Array.isArray(obj.categories)) {
+    return obj.categories as Category[];
+  }
+  if (Array.isArray(obj.items)) {
+    return obj.items as Category[];
+  }
+  if (Array.isArray(obj.data)) {
+    return obj.data as Category[];
+  }
+  
+  return categories;
 };
 
 // Normalize receipt to ensure receiptId is always set and common fields are mapped
