@@ -73,10 +73,20 @@ const Receipts = () => {
     });
   };
 
-  const sortByDate = (data: Receipt[]) => {
-    return [...data].sort((a, b) =>
-      new Date(b.date || b.createdAt || 0).getTime() - new Date(a.date || a.createdAt || 0).getTime()
-    );
+  const sortByStatusAndDate = (data: Receipt[]) => {
+    return [...data].sort((a, b) => {
+      // Draft first, then confirmed
+      const aIsDraft = isDraftStatus(a.status);
+      const bIsDraft = isDraftStatus(b.status);
+      
+      if (aIsDraft && !bIsDraft) return -1;
+      if (!aIsDraft && bIsDraft) return 1;
+      
+      // Within same status group, sort by date (most recent first)
+      const aDate = new Date(a.date || a.createdAt || 0).getTime();
+      const bDate = new Date(b.date || b.createdAt || 0).getTime();
+      return bDate - aDate;
+    });
   };
 
   const fetchReceipts = async () => {
@@ -87,7 +97,7 @@ const Receipts = () => {
       const { receipts: data } = await getReceipts({ limit: 1000 });
 
       const withLocalOverrides = applyLocalOverrides(data);
-      const sorted = sortByDate(withLocalOverrides);
+      const sorted = sortByStatusAndDate(withLocalOverrides);
       
       setAllReceipts(sorted);
       setDisplayCount(PAGE_SIZE);

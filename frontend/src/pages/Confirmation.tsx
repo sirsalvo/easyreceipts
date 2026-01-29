@@ -136,11 +136,13 @@ const Confirmation = () => {
                   )}
                 </div>
 
-                {receiptCategoryId && categories.includes(receiptCategoryId) && (
-                  <div className="pt-2 border-t border-border">
-                    <p className="text-xs text-muted-foreground">Category</p>
-                    <div className="flex items-center gap-2 mt-1">
+                {receiptCategoryId && (
+                  <div className="flex items-center gap-3">
+                    <div className="w-4 h-4 flex items-center justify-center shrink-0">
                       <div className="w-3 h-3 rounded-full bg-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Category</p>
                       <p className="font-medium">{receiptCategoryId}</p>
                     </div>
                   </div>
