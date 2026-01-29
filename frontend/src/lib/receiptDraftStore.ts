@@ -41,7 +41,7 @@ export const setDraftOverride = (receiptId: string, payload: UpdateReceiptPayloa
     total: payload.total,
     vat: payload.vat,
     vatRate: payload.vatRate,
-    category: payload.category,
+    category: payload.category ?? undefined,
     notes: payload.notes,
   };
   writeAll(all);

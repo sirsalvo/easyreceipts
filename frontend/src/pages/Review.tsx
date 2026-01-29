@@ -40,7 +40,7 @@ interface FormData {
   payee: string;
   vat: string;
   vatRate: string;
-  categoryId: string;
+  category: string;
   notes: string;
 }
 
@@ -70,7 +70,7 @@ const Review = () => {
     payee: '',
     vat: '',
     vatRate: '22',
-    categoryId: '',
+    category: '',
     notes: '',
   });
   const [errors, setErrors] = useState<FormErrors>({});
@@ -123,8 +123,8 @@ const Review = () => {
         setReceipt(normalized);
 
         // Prefill form with extracted/confirmed values
-        // Try to get categoryId from the response
-        const rawCategoryId = (apiObj.categoryId ?? apiObj.category_id ?? best.categoryId) as string | undefined;
+        // Category is a simple string from the API response
+        const rawCategory = (apiObj.category ?? best.category ?? '') as string;
         
         setFormData({
           date: normalized.date || '',
@@ -132,7 +132,7 @@ const Review = () => {
           payee: normalized.payee || '',
           vat: normalized.vat !== null ? String(normalized.vat).replace('.', ',') : '',
           vatRate: normalized.vatRate || '22',
-          categoryId: rawCategoryId || '',
+          category: rawCategory || '',
           notes: normalized.notes || '',
         });
       } catch (error) {
@@ -212,7 +212,7 @@ const Review = () => {
         total: parseFloat(formData.total.replace(',', '.')),
         vat: parseFloat(formData.vat.replace(',', '.')),
         vatRate: formData.vatRate,
-        categoryId: formData.categoryId || null,
+        category: formData.category || null,
         notes: formData.notes.trim(),
       };
 
@@ -228,7 +228,7 @@ const Review = () => {
         date: payload.date,
         vat: payload.vat,
         vatRate: payload.vatRate,
-        categoryId: payload.categoryId,
+        category: payload.category,
         notes: payload.notes,
         status: payload.status,
       });
@@ -466,14 +466,14 @@ const Review = () => {
             <div className="space-y-2">
               <Label>Category</Label>
               <Select
-                value={formData.categoryId || UNASSIGNED_VALUE}
-                onValueChange={(value) => handleInputChange('categoryId', value === UNASSIGNED_VALUE ? '' : value)}
+                value={formData.category || UNASSIGNED_VALUE}
+                onValueChange={(value) => handleInputChange('category', value === UNASSIGNED_VALUE ? '' : value)}
                 disabled={categoriesLoading}
               >
                 <SelectTrigger>
                   <SelectValue placeholder={categoriesLoading ? 'Loading...' : 'Select category'}>
-                    {formData.categoryId && categories.includes(formData.categoryId)
-                      ? formData.categoryId
+                    {formData.category && categories.includes(formData.category)
+                      ? formData.category
                       : 'Unassigned'}
                   </SelectValue>
                 </SelectTrigger>

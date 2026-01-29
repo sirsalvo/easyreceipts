@@ -311,8 +311,7 @@ export interface UpdateReceiptPayload {
   total?: number;
   vat?: number;
   vatRate?: string;
-  category?: string;
-  categoryId?: string | null;
+  category?: string | null;
   notes?: string;
   ynabExportedAt?: string;
 }
@@ -332,7 +331,8 @@ export const updateReceipt = async (
   if (payload.date !== undefined) body.receipt_date = payload.date;
   if (payload.payee !== undefined) body.merchant = payload.payee;
   if (payload.ynabExportedAt !== undefined) body.ynab_exported_at = payload.ynabExportedAt;
-  if (payload.categoryId !== undefined) body.category_id = payload.categoryId;
+  // Category is a simple string - send it as "category"
+  if (payload.category !== undefined) body.category = payload.category;
 
   return apiRequest<unknown>(`/receipts/${receiptId}`, {
     method: 'PUT',
