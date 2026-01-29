@@ -43,7 +43,9 @@ const Confirmation = () => {
 
       try {
         const response = await getReceipt(receiptId);
+        console.log('[Confirmation] Raw API response:', JSON.stringify(response, null, 2));
         const normalized = normalizeReceiptResponse(response);
+        console.log('[Confirmation] Normalized receipt:', JSON.stringify(normalized, null, 2));
         setReceipt(normalized);
       } catch (error) {
         console.error('Error fetching receipt:', error);
