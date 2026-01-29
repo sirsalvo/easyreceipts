@@ -11,6 +11,7 @@ export interface NormalizedReceipt {
   vat: number | null;
   vatRate: string;
   category: string;
+  categoryId: string;
   notes: string;
   ynabExportedAt?: string;
 }
@@ -227,7 +228,8 @@ export const normalizeReceiptResponse = (response: unknown): NormalizedReceipt =
   const vat = parseNumber(getField('vat', ['vat_amount', 'tax', 'tax_raw', 'vatAmount', 'taxAmount']));
   const vatRate =
     parseVatRate(getField('vatRate', ['vat_rate', 'vat_rate_raw', 'taxRate', 'tax_rate'])) || '22';
-  const category = (getField('category', ['type', 'expenseType', 'expenseCategory']) as string) || 'General';
+  const category = (getField('category', ['type', 'expenseType', 'expenseCategory']) as string) || '';
+  const categoryId = (getField('categoryId', ['category_id', 'internalCategory', 'internal_category']) as string) || '';
   const notes = (getField('notes', ['description', 'memo', 'comment']) as string) || '';
   const ynabExportedAt = (getNestedValue(obj, 'ynabExportedAt', 'ynab_exported_at') as string) || undefined;
 
@@ -241,6 +243,7 @@ export const normalizeReceiptResponse = (response: unknown): NormalizedReceipt =
     vat,
     vatRate,
     category,
+    categoryId,
     notes,
     ynabExportedAt,
   };

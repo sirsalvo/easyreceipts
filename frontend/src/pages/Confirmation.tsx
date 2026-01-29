@@ -8,8 +8,7 @@ import { normalizeReceiptResponse, NormalizedReceipt } from '@/lib/receiptNormal
 import { getYNABConfig, exportToYNAB } from '@/lib/ynab';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
-import { useCategories } from '@/hooks/useCategories';
-import { 
+import {
   CheckCircle2, 
   Plus, 
   FileText, 
@@ -27,10 +26,8 @@ import BottomNavigation from '@/components/BottomNavigation';
 const Confirmation = () => {
   const navigate = useNavigate();
   const { receiptId } = useParams<{ receiptId: string }>();
-  const { categories } = useCategories();
   const [loading, setLoading] = useState(true);
   const [receipt, setReceipt] = useState<NormalizedReceipt | null>(null);
-  const [receiptCategoryId, setReceiptCategoryId] = useState<string | undefined>();
   const [exporting, setExporting] = useState(false);
   const [showFullImage, setShowFullImage] = useState(false);
   
@@ -48,10 +45,6 @@ const Confirmation = () => {
         const response = await getReceipt(receiptId);
         const normalized = normalizeReceiptResponse(response);
         setReceipt(normalized);
-        // Extract categoryId from raw response
-        const rawResponse = response as Record<string, unknown>;
-        const catId = (rawResponse.categoryId ?? rawResponse.category_id) as string | undefined;
-        setReceiptCategoryId(catId);
       } catch (error) {
         console.error('Error fetching receipt:', error);
       } finally {
@@ -136,14 +129,14 @@ const Confirmation = () => {
                   )}
                 </div>
 
-                {receiptCategoryId && (
+                {receipt.categoryId && (
                   <div className="flex items-center gap-3">
                     <div className="w-4 h-4 flex items-center justify-center shrink-0">
                       <div className="w-3 h-3 rounded-full bg-primary" />
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Category</p>
-                      <p className="font-medium">{receiptCategoryId}</p>
+                      <p className="font-medium">{receipt.categoryId}</p>
                     </div>
                   </div>
                 )}
