@@ -1,3 +1,41 @@
-sam validate --lint
+#!/usr/bin/env bash
+set -euo pipefail
+
+ENV="${1:-}"
+
+if [[ "$ENV" != "dev" && "$ENV" != "prod" ]]; then
+  echo "❌ Usage: ./scripts/deploy_backend.sh {dev|prod}"
+  exit 1
+fi
+
+echo "🚀 Deploy backend [$ENV]"
+echo
+
+# Extra safety for PROD
+if [[ "$ENV" == "prod" ]]; then
+  echo "⚠️  WARNING: You are about to deploy to PRODUCTION"
+  echo "Stack, Cognito, DynamoDB and Stripe LIVE may be affected."
+  echo
+  read -r -p "Type 'prod' to continue: " CONFIRM
+  if [[ "$CONFIRM" != "prod" ]]; then
+    echo "❌ Aborted."
+    exit 1
+  fi
+  echo "✅ PROD confirmed"
+  echo
+fi
+
+# Build (container needed for python3.11)
+echo "🔧 sam build --use-container"
 sam build --use-container
-sam deploy --stack-name easyreceipts-dev --region eu-central-1 --capabilities CAPABILITY_IAM --s3-bucket easyreceipts-sam-artifacts-408959241421-euc1 --no-resolve-s3 --parameter-overrides AppName=easyreceipts Env=dev UiDomainPrefix=easyreceipts-dev-ui-408959241421 TestsUserPoolClientId=17nmnav2nsjmlcdtfkmjokd9kt
+
+echo
+echo "📦 sam deploy ($ENV)"
+
+sam deploy \
+  --config-file samconfig.toml \
+  --config-env "$ENV" \
+  --no-fail-on-empty-changeset
+
+echo
+echo "✅ Backend deployed successfully ($ENV)"

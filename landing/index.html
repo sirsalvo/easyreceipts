@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spendify — Receipt tracking, ready for YNAB</title>
+  <meta name="description" content="Track expenses from receipts and export clean transactions to YNAB in seconds." />
+
+  <!-- Brand assets (upload these files to the LANDING S3 bucket root) -->
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta name="theme-color" content="#3B82F6" />
+
+  <style>
+    :root {
+      --bg: #FAFAFA;
+      --fg: #111827;
+      --primary: #3B82F6;
+      --primary-hover: #2563EB;
+      --muted: #6B7280;
+      --border: #E5E7EB;
+      --card-bg: #FFFFFF;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+    .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+    /* Header */
+    header {
+      padding: 18px 0;
+      border-bottom: 1px solid var(--border);
+      background: var(--card-bg);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+    }
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--fg);
+      line-height: 1;
+      white-space: nowrap;
+    }
+    .logo-img {
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+      display: block;
+      flex-shrink: 0;
+    }
+    .logo-text {
+      font-size: 1.35rem;
+      font-weight: 750;
+      letter-spacing: -0.01em;
+    }
+    nav ul { display: flex; gap: 28px; list-style: none; }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 0.95rem;
+      transition: color 0.2s;
+    }
+    nav a:hover { color: var(--fg); }
+
+    .btn {
+      display: inline-block;
+      padding: 12px 18px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-hover); }
+    .btn-secondary {
+      background: transparent;
+      color: var(--fg);
+      border-color: var(--border);
+    }
+    .btn-secondary:hover { background: #F3F4F6; }
+
+    /* Hero */
+    .hero { padding: 92px 0 64px; text-align: center; }
+    .hero h1 {
+      font-size: 3.1rem;
+      font-weight: 800;
+      line-height: 1.08;
+      margin-bottom: 18px;
+      letter-spacing: -0.03em;
+    }
+    .hero p {
+      font-size: 1.15rem;
+      color: var(--muted);
+      max-width: 640px;
+      margin: 0 auto 28px;
+    }
+    .hero-buttons { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+    /* Sections */
+    .section { padding: 70px 0; }
+    .section.alt {
+      background: var(--card-bg);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .section-title {
+      text-align: center;
+      font-size: 1.9rem;
+      font-weight: 800;
+      margin-bottom: 44px;
+      letter-spacing: -0.02em;
+    }
+
+    /* Features */
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+    }
+    .icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    .icon svg { width: 22px; height: 22px; stroke: #fff; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .card h3 { font-size: 1.05rem; font-weight: 750; margin-bottom: 8px; }
+    .card p { color: var(--muted); font-size: 0.95rem; }
+
+    /* Steps */
+    .step { text-align: center; padding: 4px 10px; }
+    .step-number {
+      width: 40px; height: 40px;
+      border-radius: 999px;
+      background: var(--fg);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      margin-bottom: 14px;
+    }
+    .step h3 { font-size: 1.05rem; font-weight: 750; margin-bottom: 6px; }
+    .step p { color: var(--muted); font-size: 0.95rem; }
+
+    /* YNAB */
+    .ynab-box {
+      max-width: 860px;
+      margin: 0 auto;
+      text-align: left;
+    }
+    .ynab-box h3 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      margin-bottom: 10px;
+    }
+    .ynab-box ul { margin: 10px 0 0 18px; color: var(--muted); }
+    .ynab-box li { margin: 6px 0; }
+
+    /* CTA */
+    .cta { padding: 86px 0; text-align: center; }
+    .cta h2 { font-size: 2.2rem; font-weight: 850; margin-bottom: 12px; letter-spacing: -0.02em; }
+    .cta p { color: var(--muted); font-size: 1.08rem; margin-bottom: 22px; }
+
+    /* Footer */
+    footer { padding: 34px 0; border-top: 1px solid var(--border); }
+    .footer-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+    .footer-links { display: flex; gap: 18px; list-style: none; flex-wrap: wrap; }
+    .footer-links a { color: var(--muted); text-decoration: none; font-size: 0.9rem; }
+    .footer-links a:hover { color: var(--fg); }
+    .copyright { color: var(--muted); font-size: 0.9rem; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .grid-3 { grid-template-columns: 1fr; }
+      nav ul { display: none; }
+      .hero { padding: 72px 0 54px; }
+      .hero h1 { font-size: 2.2rem; }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <div class="container header-inner">
+      <a href="/" class="logo" aria-label="Spendify home">
+        <!-- Replace the file below with your ORIGINAL Spendify logo -->
+        <img
+          src="logo-spendify.svg"
+          alt="Spendify"
+          style="height:44px; display:block"
+        />
+
+        <span class="logo-text">Spendify</span>
+      </a>
+
+      <nav>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#how">How it works</a></li>
+          <li><a href="#ynab">YNAB</a></li>
+        </ul>
+      </nav>
+
+      <a href="https://app.spendifyapp.com" class="btn btn-primary">Sign in</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <h1>Track receipts. Export to YNAB in seconds.</h1>
+        <p>Spendify turns your receipts into clean, structured transactions — ready for budgeting.</p>
+        <div class="hero-buttons">
+          <a href="https://app.spendifyapp.com" class="btn btn-primary">Start free trial</a>
+          <a href="#how" class="btn btn-secondary">See how it works</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="section">
+      <div class="container">
+        <div class="grid-3">
+          <div class="card">
+            <div class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </div>
+            <h3>Fast capture</h3>
+            <p>Upload photos or PDFs and get the key details extracted.</p>
+          </div>
+
+          <div class="card">
+            <div class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22,4 12,14.01 9,11.01"/></svg>
+            </div>
+            <h3>Review & correct</h3>
+            <p>Check merchant, date and amount — keep your data accurate.</p>
+          </div>
+
+          <div class="card">
+            <div class="icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+            <h3>Export your way</h3>
+            <p>Export to CSV anytime or send transactions directly to YNAB.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="how" class="section alt">
+      <div class="container">
+        <h2 class="section-title">How it works</h2>
+        <div class="grid-3">
+          <div class="step">
+            <div class="step-number">1</div>
+            <h3>Upload</h3>
+            <p>Take a photo or upload a PDF receipt.</p>
+          </div>
+          <div class="step">
+            <div class="step-number">2</div>
+            <h3>Review</h3>
+            <p>Confirm extracted data and edit if needed.</p>
+          </div>
+          <div class="step">
+            <div class="step-number">3</div>
+            <h3>Export</h3>
+            <p>Export to YNAB or download a CSV.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="ynab" class="section">
+      <div class="container">
+        <h2 class="section-title">Built for YNAB users</h2>
+        <div class="card ynab-box">
+          <h3>Simple integration, full control</h3>
+          <p style="color: var(--muted);">
+            Spendify exports transactions to YNAB using the official API. Categories are not assigned —
+            you stay in control inside YNAB.
+          </p>
+          <ul>
+            <li>No forced categories</li>
+            <li>Exported receipts are clearly marked in Spendify</li>
+            <li>CSV export remains available anytime</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta">
+      <div class="container">
+        <h2>Ready to keep your spending organized?</h2>
+        <p>Start your free trial. No credit card required.</p>
+        <a href="https://app.spendifyapp.com" class="btn btn-primary">Create an account</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container footer-inner">
+      <ul class="footer-links">
+        <li><a href="/privacy.html">Privacy Policy</a></li>
+        <li><a href="/terms.html">Terms of Service</a></li>
+        <li><a href="mailto:support@spendifyapp.com">support@spendifyapp.com</a></li>
+      </ul>
+      <p class="copyright">© 2026 Spendify. All rights reserved.</p>
+    </div>
+  </footer>
+</body>
+</html>

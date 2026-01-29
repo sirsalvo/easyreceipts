@@ -1,3 +1,4 @@
+
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: EasyReceipts - Stage-aware stack (Cognito + HttpApi + DynamoDB + S3 pipeline + CloudFront UI) - no circular deps
@@ -37,6 +38,12 @@ Parameters:
     Type: String
     Default: "http://localhost:8088,http://localhost:8080,http://localhost:5173"
     Description: "CORS allowed origins. Use '*' to allow all (temporary). Or comma-separated list."
+
+  # Stripe redirects (success/cancel/portal return). In PROD set this to the CloudFront UI URL.
+  AppBaseUrl:
+    Type: String
+    Default: "http://localhost:8088"
+    Description: "Base URL of the app used for Stripe redirect URLs (e.g., https://<cloudfront-domain>). No trailing slash."
 
 Conditions:
   HasTestsClientId: !Not [!Equals [!Ref TestsUserPoolClientId, ""]]
@@ -157,9 +164,44 @@ Resources:
         - AttributeName: SK
           KeyType: RANGE
 
+  # NEW: Users table for trial + subscription state
+  UsersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AppName}-${Env}-users"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+
   # ---------------------------
   # UI bucket + CloudFront distribution
   # ---------------------------
+  UserCategoriesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: App
+          Value: !Ref AppName
+        - Key: Env
+          Value: !Ref Env
+
   UiBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -232,10 +274,7 @@ Resources:
     Properties:
       Name: !Sub "${AppName}-${Env}-api"
       CorsConfiguration:
-        AllowOrigins: !If
-          - AllowAllOrigins
-          - ["*"]
-          - !Split [",", !Ref UiAllowedOrigins]
+        AllowOrigins: !Split [",", !Ref UiAllowedOrigins]
         AllowHeaders:
           - content-type
           - authorization
@@ -267,12 +306,28 @@ Resources:
       Handler: app.handler
       Environment:
         Variables:
+          CORS_ORIGINS: !Ref UiAllowedOrigins
           COGNITO_DOMAIN: !Sub "${UiDomainPrefix}.auth.${AWS::Region}.amazoncognito.com"
           COGNITO_CLIENT_ID: !Ref UserPoolClient
           RECEIPTS_TABLE: !Ref ReceiptsTable
           TAGS_TABLE: !Ref UserTagsTable
           USAGE_TABLE: !Ref UsageMonthlyTable
+          USERS_TABLE: !Ref UsersTable
+          USER_CATEGORIES_TABLE: !Ref UserCategoriesTable
+          TRIAL_DAYS: "14"
           UPLOADS_BUCKET: !Sub "${AppName}-${Env}-uploads-${AWS::AccountId}-${AWS::Region}"
+
+          # Stripe config (recommended: SSM dynamic references)
+          # NOTE: replace "/spendify/..." with your preferred path if needed
+          STRIPE_SECRET_KEY_PARAM: !Sub "/spendify/${Env}/stripe/secret_key"
+          STRIPE_PRICE_ID_PARAM: !Sub "/spendify/${Env}/stripe/price_id"
+          STRIPE_WEBHOOK_SECRET_PARAM: !Sub "/spendify/${Env}/stripe/webhook_secret"
+
+
+
+          # Used by the backend to craft Stripe redirect URLs
+          APP_BASE_URL: !Ref AppBaseUrl
+
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref ReceiptsTable
@@ -280,8 +335,25 @@ Resources:
             TableName: !Ref UserTagsTable
         - DynamoDBCrudPolicy:
             TableName: !Ref UsageMonthlyTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UsersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserCategoriesTable
         - S3CrudPolicy:
             BucketName: !Sub "${AppName}-${Env}-uploads-${AWS::AccountId}-${AWS::Region}"
+        - Statement:
+            Effect: Allow
+            Action:
+              - ssm:GetParameter
+              - ssm:GetParameters
+            Resource:
+              - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/spendify/${Env}/stripe/*"
+        - Statement:
+            Effect: Allow
+            Action:
+              - kms:Decrypt
+            Resource: "*"
+
       Events:
         # PUBLIC: OAuth code exchange (no JWT)
         AuthExchangePost:
@@ -298,6 +370,25 @@ Resources:
           Properties:
             ApiId: !Ref HttpApi
             Path: /auth/exchange
+            Method: OPTIONS
+            Auth:
+              Authorizer: NONE
+
+        # PUBLIC: Stripe webhook (no JWT)
+        StripeWebhookPost:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /webhooks/stripe
+            Method: POST
+            Auth:
+              Authorizer: NONE
+
+        StripeWebhookOptions:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /webhooks/stripe
             Method: OPTIONS
             Auth:
               Authorizer: NONE
@@ -462,6 +553,13 @@ Outputs:
 
   UploadsBucketName:
     Value: !Ref UploadsBucket
+
+  UsersTableName:
+    Value: !Ref UsersTable
+
+  UserCategoriesTableName:
+    Description: User categories table name
+    Value: !Ref UserCategoriesTable
 
   CognitoHostedUiIssuer:
     Description: Cognito issuer URL (for JWT)

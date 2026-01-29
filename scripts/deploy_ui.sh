@@ -1,160 +1,177 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ---------------------------------------
-# Deploy UI to S3 + CloudFront invalidation
+# ------------------------------------------------------------
+# Spendify / EasyReceipts - UI deploy (dev|prod) with optional sync
+#
 # Usage:
+#   ./scripts/deploy_ui.sh <dev|prod> [--sync]
+#
+# Examples:
 #   ./scripts/deploy_ui.sh dev
 #   ./scripts/deploy_ui.sh prod
+#   ./scripts/deploy_ui.sh dev --sync
+#   ./scripts/deploy_ui.sh prod --sync
 #
-# Optional env vars:
-#   REGION=eu-central-1
-#   DO_SYNC=0|1
-#   STACK_PREFIX=easyreceipts
-#   UI_BUCKET=<bucket-name>                 # overrides CFN output
-#   CF_DISTRIBUTION_ID=<cloudfront-id>      # forces invalidation
-#   CF_ALIAS=<alias-domain>                 # enables alias lookup (prod default)
-#   CF_DOMAIN=<dxxxx.cloudfront.net>        # enables DomainName lookup (dev default)
-# ---------------------------------------
+# Optional overrides:
+#   AWS_REGION=eu-central-1
+#   CF_DISTRIBUTION_ID=<id>     # force invalidation id
+#   CF_ALIAS=<alias-domain>     # used to lookup distribution id (e.g., app.spendifyapp.com)
+# ------------------------------------------------------------
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+FRONTEND_DIR="${REPO_ROOT}/frontend"
+
+AWS_REGION="${AWS_REGION:-eu-central-1}"
+
+usage() {
+  echo "Usage: $0 <dev|prod> [--sync]"
+  exit 1
+}
 
 ENVIRONMENT="${1:-}"
-if [[ "$ENVIRONMENT" != "dev" && "$ENVIRONMENT" != "prod" ]]; then
-  echo "❌ Usage: $0 dev|prod"
-  exit 1
-fi
+[[ -z "${ENVIRONMENT}" ]] && usage
+[[ "${ENVIRONMENT}" != "dev" && "${ENVIRONMENT}" != "prod" ]] && usage
 
-REGION="${REGION:-eu-central-1}"
-DO_SYNC="${DO_SYNC:-0}"
-STACK_PREFIX="${STACK_PREFIX:-easyreceipts}"
-STACK_NAME="${STACK_PREFIX}-${ENVIRONMENT}"
+SYNC_UI=0
+shift || true
 
-# Defaults (based on your current CloudFront setup)
-DEFAULT_PROD_ALIAS="app.spendifyapp.com"
-DEFAULT_DEV_DOMAIN="d33xe02gdlyt8z.cloudfront.net"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --sync)
+      SYNC_UI=1
+      shift
+      ;;
+    *)
+      echo "Unknown option: $1"
+      usage
+      ;;
+  esac
+done
 
-CF_ALIAS="${CF_ALIAS:-}"
-CF_DOMAIN="${CF_DOMAIN:-}"
+STACK_NAME="easyreceipts-${ENVIRONMENT}"
 
-if [[ -z "$CF_ALIAS" && "$ENVIRONMENT" == "prod" ]]; then
-  CF_ALIAS="$DEFAULT_PROD_ALIAS"
-fi
+# ---- Helpers ------------------------------------------------
 
-if [[ -z "$CF_DOMAIN" && "$ENVIRONMENT" == "dev" ]]; then
-  CF_DOMAIN="$DEFAULT_DEV_DOMAIN"
-fi
+get_stack_output() {
+  local key="$1"
+  aws cloudformation describe-stacks \
+    --region "${AWS_REGION}" \
+    --stack-name "${STACK_NAME}" \
+    --query "Stacks[0].Outputs[?OutputKey=='${key}'].OutputValue | [0]" \
+    --output text
+}
+
+find_cf_distribution_id_by_domain() {
+  local domain="$1"
+  # CloudFront list-distributions output is paginated, but this query works for most accounts.
+  aws cloudfront list-distributions \
+    --query "DistributionList.Items[?DomainName=='${domain}'].Id | [0]" \
+    --output text 2>/dev/null || true
+}
+
+find_cf_distribution_id_by_alias() {
+  local alias="$1"
+  aws cloudfront list-distributions \
+    --query "DistributionList.Items[?Aliases.Items && contains(Aliases.Items, '${alias}')].Id | [0]" \
+    --output text 2>/dev/null || true
+}
+
+invalidate_cloudfront() {
+  local cf_id="$1"
+  echo "♻️  Invalidating CloudFront: ${cf_id}"
+  aws cloudfront create-invalidation --distribution-id "${cf_id}" --paths "/*" >/dev/null
+  echo "✅ CloudFront invalidation submitted."
+}
+
+# ---- Header -------------------------------------------------
 
 echo "🚀 Deploy UI"
-echo "   Environment : $ENVIRONMENT"
-echo "   Stack       : $STACK_NAME"
-echo "   Region      : $REGION"
-echo "   Sync UI     : $DO_SYNC"
-if [[ -n "$CF_ALIAS" ]]; then echo "   CF Alias    : $CF_ALIAS"; fi
-if [[ -n "$CF_DOMAIN" ]]; then echo "   CF Domain   : $CF_DOMAIN"; fi
+echo "   Environment : ${ENVIRONMENT}"
+echo "   Stack       : ${STACK_NAME}"
+echo "   Region      : ${AWS_REGION}"
+echo "   Sync UI     : ${SYNC_UI}"
+[[ -n "${CF_ALIAS:-}" ]] && echo "   CF Alias    : ${CF_ALIAS}"
+[[ -n "${CF_DISTRIBUTION_ID:-}" ]] && echo "   CF ForcedID : ${CF_DISTRIBUTION_ID}"
 echo "------------------------------------"
 
-# ---------------------------------------
-# (Optional) Sync frontend from Lovable
-# ---------------------------------------
-if [[ "$DO_SYNC" == "1" ]]; then
-  echo "🔄 Sync frontend from Lovable..."
-  bash scripts/sync_frontend_from_lovable.sh
+# ---- Optional sync from Lovable -----------------------------
+
+if [[ "${SYNC_UI}" == "1" ]]; then
+  echo "🔁 Syncing frontend from Lovable..."
+  "${REPO_ROOT}/scripts/sync_frontend_from_lovable.sh"
 fi
 
-# ---------------------------------------
-# Build frontend
-# ---------------------------------------
-echo "🏗️  Building frontend..."
-pushd frontend >/dev/null
+# ---- Build --------------------------------------------------
+
+echo "🏗️  Building frontend (mode: ${ENVIRONMENT})..."
+cd "${FRONTEND_DIR}"
+
+# Install deps (cheap if already installed)
 npm ci
-npm run build
-popd >/dev/null
 
-# ---------------------------------------
-# Resolve UI bucket (from CFN output unless overridden)
-# ---------------------------------------
-if [[ -z "${UI_BUCKET:-}" ]]; then
-  UI_BUCKET="$(aws cloudformation describe-stacks \
-    --stack-name "$STACK_NAME" \
-    --region "$REGION" \
-    --query "Stacks[0].Outputs[?OutputKey=='UiBucketName'].OutputValue" \
-    --output text || true)"
-fi
+# Build with Vite mode (loads .env.dev / .env.prod automatically)
+npm run build -- --mode "${ENVIRONMENT}"
 
-if [[ -z "${UI_BUCKET:-}" || "${UI_BUCKET:-}" == "None" ]]; then
-  echo "❌ Cannot resolve UI bucket."
-  echo "   - Ensure CFN stack '$STACK_NAME' has OutputKey 'UiBucketName', or"
-  echo "   - Provide UI_BUCKET=<bucket-name>."
+if [[ ! -d "${FRONTEND_DIR}/dist" ]]; then
+  echo "❌ ERROR: dist/ not found. Build did not produce output."
   exit 1
 fi
 
-echo "📦 UI Bucket: $UI_BUCKET"
+# ---- Resolve UI bucket & CloudFront --------------------------
 
-# ---------------------------------------
-# Deploy to S3
-# ---------------------------------------
+UI_BUCKET="$(get_stack_output "UiBucketName")"
+UI_CF_DOMAIN="$(get_stack_output "UiDistributionDomain")"
+
+if [[ -z "${UI_BUCKET}" || "${UI_BUCKET}" == "None" ]]; then
+  echo "❌ ERROR: Could not resolve UiBucketName from stack outputs."
+  exit 1
+fi
+
+echo "📦 UI Bucket: ${UI_BUCKET}"
+
+# ---- Upload -------------------------------------------------
+
 echo "⬆️  Upload index.html (no-cache)"
-aws s3 cp frontend/dist/index.html "s3://${UI_BUCKET}/index.html" \
+aws s3 cp "${FRONTEND_DIR}/dist/index.html" "s3://${UI_BUCKET}/index.html" \
   --cache-control "no-cache, no-store, must-revalidate" \
-  --content-type "text/html"
+  --content-type "text/html" \
+  --region "${AWS_REGION}"
 
 echo "⬆️  Sync static assets (long cache)"
-aws s3 sync frontend/dist "s3://${UI_BUCKET}" \
+aws s3 sync "${FRONTEND_DIR}/dist" "s3://${UI_BUCKET}/" \
   --exclude "index.html" \
+  --cache-control "public, max-age=31536000, immutable" \
   --delete \
-  --cache-control "public, max-age=31536000, immutable"
+  --region "${AWS_REGION}"
 
-# ---------------------------------------
-# Resolve CloudFront distribution id
-# - 1) CF_DISTRIBUTION_ID env override
-# - 2) CFN output UiDistributionId
-# - 3) Search by alias (if CF_ALIAS provided)
-# - 4) Search by DomainName (if CF_DOMAIN provided)  <-- NEW for dev
-# ---------------------------------------
-RESOLVED_CF_ID="${CF_DISTRIBUTION_ID:-}"
+# ---- Invalidation (best-effort) -----------------------------
 
-if [[ -z "$RESOLVED_CF_ID" ]]; then
-  RESOLVED_CF_ID="$(aws cloudformation describe-stacks \
-    --stack-name "$STACK_NAME" \
-    --region "$REGION" \
-    --query "Stacks[0].Outputs[?OutputKey=='UiDistributionId'].OutputValue" \
-    --output text 2>/dev/null || true)"
-  if [[ "$RESOLVED_CF_ID" == "None" ]]; then
-    RESOLVED_CF_ID=""
+CF_ID=""
+
+if [[ -n "${CF_DISTRIBUTION_ID:-}" ]]; then
+  CF_ID="${CF_DISTRIBUTION_ID}"
+else
+  # 1) Try lookup by distribution domain from stack output
+  if [[ -n "${UI_CF_DOMAIN}" && "${UI_CF_DOMAIN}" != "None" ]]; then
+    CF_ID="$(find_cf_distribution_id_by_domain "${UI_CF_DOMAIN}")"
+  fi
+
+  # 2) Fallback: lookup by alias if provided
+  if [[ -z "${CF_ID}" || "${CF_ID}" == "None" ]]; then
+    if [[ -n "${CF_ALIAS:-}" ]]; then
+      CF_ID="$(find_cf_distribution_id_by_alias "${CF_ALIAS}")"
+    fi
   fi
 fi
 
-if [[ -z "$RESOLVED_CF_ID" && -n "$CF_ALIAS" ]]; then
-  RESOLVED_CF_ID="$(aws cloudfront list-distributions \
-    --query "DistributionList.Items[?Aliases.Items && contains(Aliases.Items, '${CF_ALIAS}')].Id | [0]" \
-    --output text 2>/dev/null || true)"
-  if [[ "$RESOLVED_CF_ID" == "None" ]]; then
-    RESOLVED_CF_ID=""
-  fi
-fi
-
-if [[ -z "$RESOLVED_CF_ID" && -n "$CF_DOMAIN" ]]; then
-  RESOLVED_CF_ID="$(aws cloudfront list-distributions \
-    --query "DistributionList.Items[?DomainName=='${CF_DOMAIN}'].Id | [0]" \
-    --output text 2>/dev/null || true)"
-  if [[ "$RESOLVED_CF_ID" == "None" ]]; then
-    RESOLVED_CF_ID=""
-  fi
-fi
-
-# ---------------------------------------
-# Invalidate CloudFront (if resolved)
-# ---------------------------------------
-if [[ -z "$RESOLVED_CF_ID" ]]; then
+if [[ -n "${CF_ID}" && "${CF_ID}" != "None" ]]; then
+  invalidate_cloudfront "${CF_ID}"
+else
   echo "⚠️  CloudFront distribution ID not found; skipping invalidation."
   echo "   - Set CF_DISTRIBUTION_ID=<id> to force invalidation, or"
-  echo "   - Set CF_ALIAS=<alias-domain> (if distribution has aliases), or"
-  echo "   - Set CF_DOMAIN=<dxxxx.cloudfront.net> to enable DomainName lookup."
-else
-  echo "♻️  Invalidating CloudFront: $RESOLVED_CF_ID"
-  aws cloudfront create-invalidation \
-    --distribution-id "$RESOLVED_CF_ID" \
-    --paths "/*" >/dev/null
-  echo "✅ CloudFront invalidation submitted."
+  echo "   - Provide CF_ALIAS=<alias-domain> to enable alias-based lookup."
 fi
 
-echo "✅ Deploy completed for environment: $ENVIRONMENT"
+echo "✅ Deploy completed for environment: ${ENVIRONMENT}"

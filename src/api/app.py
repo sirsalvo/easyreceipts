@@ -23,6 +23,7 @@ from __future__ import annotations
 import base64
 import datetime as dt
 import json
+import time
 import os
 import re
 import uuid
@@ -49,8 +50,32 @@ class DecimalEncoder(json.JSONEncoder):
 dynamodb = boto3.resource("dynamodb")
 s3 = boto3.client("s3")
 
+def _load_json_s3(bucket: str, key: str) -> Optional[Dict[str, Any]]:
+    """Load and parse a JSON object from S3. Returns None if missing or unreadable."""
+    try:
+        res = s3.get_object(Bucket=bucket, Key=key)
+        raw = res["Body"].read().decode("utf-8")
+        return json.loads(raw)
+    except Exception:
+        return None
+
+
 RECEIPTS_TABLE = os.getenv("RECEIPTS_TABLE", "")
 UPLOADS_BUCKET = os.getenv("UPLOADS_BUCKET", "")
+
+# Categories (user-customizable list)
+USER_CATEGORIES_TABLE = os.getenv("USER_CATEGORIES_TABLE", "")
+DEFAULT_CATEGORIES = [
+    "Groceries",
+    "Restaurants",
+    "Transport",
+    "Shopping",
+    "Health",
+    "Bills",
+    "Entertainment",
+    "Travel",
+    "Other",
+]
 
 COGNITO_DOMAIN = os.getenv("COGNITO_DOMAIN", "").strip()  # without https://
 COGNITO_CLIENT_ID = os.getenv("COGNITO_CLIENT_ID", "").strip()
@@ -130,6 +155,30 @@ def _json(status: int, body: Any, origin: str) -> Dict[str, Any]:
     return {"statusCode": status, "headers": headers, "body": json.dumps(body, cls=DecimalEncoder)}
 
 
+def _parse_json_body(event: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Parse JSON body from API Gateway v2 event (supports base64)."""
+    body = event.get("body")
+    if body is None:
+        return None
+    try:
+        if event.get("isBase64Encoded"):
+            import base64
+            body = base64.b64decode(body).decode("utf-8")
+        if isinstance(body, (bytes, bytearray)):
+            body = body.decode("utf-8")
+        if isinstance(body, str):
+            body = body.strip()
+            if not body:
+                return None
+            return json.loads(body)
+        # already parsed?
+        if isinstance(body, dict):
+            return body
+        return None
+    except Exception:
+        return None
+
+
 def _pick_allow_origin(event: Dict[str, Any]) -> str:
     if UI_ORIGIN:
         return UI_ORIGIN
@@ -158,6 +207,40 @@ def _read_json(event: Dict[str, Any]) -> Dict[str, Any]:
     except Exception:
         return {}
 
+
+_MISSING = object()
+
+def _parse_ynab_exported_at(body: Dict[str, Any]):
+    """Return 3-state value for YNAB export timestamp.
+    - _MISSING if neither key is present
+    - None if explicitly null/empty
+    - ISO 8601 string if valid
+    Raises ValueError if present but invalid.
+    Accepts both ynabExportedAt (camelCase) and ynab_exported_at (snake_case).
+    """
+    if not isinstance(body, dict):
+        return _MISSING
+
+    if "ynabExportedAt" in body:
+        val = body.get("ynabExportedAt")
+    elif "ynab_exported_at" in body:
+        val = body.get("ynab_exported_at")
+    else:
+        return _MISSING
+
+    if val is None or val == "":
+        return None
+
+    if not isinstance(val, str):
+        raise ValueError("ynabExportedAt must be an ISO 8601 string")
+
+    try:
+        # Accept Z suffix
+        dt.datetime.fromisoformat(val.replace("Z", "+00:00"))
+    except Exception:
+        raise ValueError("Invalid ynabExportedAt: must be ISO 8601 timestamp")
+
+    return val
 
 def _claims(event: Dict[str, Any]) -> Dict[str, Any]:
     return (
@@ -191,6 +274,135 @@ def _require_env(origin: str) -> Optional[Dict[str, Any]]:
 
 def _receipts_table():
     return dynamodb.Table(RECEIPTS_TABLE)
+
+
+def _categories_table():
+    return dynamodb.Table(USER_CATEGORIES_TABLE)
+
+
+def _persist_inferred_fields(sub: str, receipt_id: str, db_item: Optional[Dict[str, Any]], inferred: Dict[str, Any], has_ocr: bool) -> Optional[Dict[str, Any]]:
+    """
+    Persist OCR-inferred fields into DynamoDB so reopening a DRAFT pre-fills the form.
+    - Writes only fields that are currently missing in db_item.
+    - Stores numeric fields as strings (consistent with _update_receipt).
+    Returns the updated item (ALL_NEW) or None if no update was needed.
+    """
+    if not inferred:
+        return None
+
+    # Determine which fields are missing in DB
+    missing_keys: List[str] = []
+    for k in ["payee", "date", "total", "vat", "vatRate"]:
+        cur = (db_item or {}).get(k)
+        if cur is None or (isinstance(cur, str) and not cur.strip()):
+            if inferred.get(k) is not None:
+                missing_keys.append(k)
+
+    # Nothing to persist
+    cur_status = (db_item or {}).get("status")
+    if not missing_keys and not (has_ocr and cur_status in (None, "NEW", "PROCESSED")):
+        return None
+
+    pk = f"USER#{sub}"
+    sk = f"RECEIPT#{receipt_id}"
+    now = _now_iso()
+
+    expr = "SET updatedAt=:u"
+    values: Dict[str, Any] = {":u": now}
+    names: Dict[str, str] = {}
+
+    def _set(attr: str, ph: str, value: Any):
+        nonlocal expr
+        names[f"#{attr}"] = attr
+        values[ph] = value
+        expr += f", #{attr}={ph}"
+
+    # Persist inferred fields (numbers as strings)
+    if "payee" in missing_keys:
+        _set("payee", ":p", str(inferred.get("payee")).strip())
+    if "date" in missing_keys:
+        _set("date", ":d", str(inferred.get("date")).strip())
+    if "total" in missing_keys:
+        _set("total", ":t", str(inferred.get("total")))
+    if "vat" in missing_keys:
+        _set("vat", ":v", str(inferred.get("vat")))
+    if "vatRate" in missing_keys:
+        _set("vatRate", ":vr", str(inferred.get("vatRate")))
+
+    # If OCR exists, ensure status is at least OCR_DONE (but don't overwrite CONFIRMED)
+    if has_ocr and cur_status in (None, "NEW", "PROCESSED"):
+        _set("status", ":s", "OCR_DONE")
+
+    try:
+        resp = _receipts_table().update_item(
+            Key={"PK": pk, "SK": sk},
+            UpdateExpression=expr,
+            ExpressionAttributeNames=names if names else None,
+            ExpressionAttributeValues=values,
+            ConditionExpression="attribute_exists(PK) AND attribute_exists(SK)",
+            ReturnValues="ALL_NEW",
+        )
+        return resp.get("Attributes")
+    except ClientError:
+        return None
+
+
+
+def _get_user_categories(user_sub: str) -> Dict[str, Any]:
+    """Fetch user's categories list from DynamoDB.
+
+    Schema:
+      PK = USER#{sub}
+      SK = CATEGORIES
+      categories = [str]
+    """
+    if not USER_CATEGORIES_TABLE:
+        return {"categories": DEFAULT_CATEGORIES, "source": "default"}
+
+    resp = _categories_table().get_item(
+        Key={"PK": f"USER#{user_sub}", "SK": "CATEGORIES"}
+    )
+    item = resp.get("Item")
+    if not item or not isinstance(item.get("categories"), list) or not item.get("categories"):
+        return {"categories": DEFAULT_CATEGORIES, "source": "default"}
+    # Ensure strings & stable order (keep user order)
+    cats = [str(x).strip() for x in item.get("categories") if str(x).strip()]
+    cats = cats[:100]  # hard cap
+    return {"categories": cats or DEFAULT_CATEGORIES, "source": "user"}
+
+
+def _put_user_categories(user_sub: str, categories: Any) -> Dict[str, Any]:
+    if not USER_CATEGORIES_TABLE:
+        raise RuntimeError("Missing USER_CATEGORIES_TABLE")
+
+    if not isinstance(categories, list):
+        raise ValueError("categories must be a list")
+
+    cleaned = []
+    seen = set()
+    for c in categories:
+        s = str(c).strip()
+        if not s:
+            continue
+        if len(s) > 40:
+            s = s[:40]
+        if s.lower() in seen:
+            continue
+        seen.add(s.lower())
+        cleaned.append(s)
+        if len(cleaned) >= 50:
+            break
+
+    # If user clears everything, fall back to defaults (but still store empty -> treat as default)
+    _categories_table().put_item(
+        Item={
+            "PK": f"USER#{user_sub}",
+            "SK": "CATEGORIES",
+            "categories": cleaned,
+            "updatedAt": int(time.time() * 1000),
+        }
+    )
+    return {"categories": cleaned or DEFAULT_CATEGORIES, "source": "user" if cleaned else "default"}
 
 
 # -------------------------
@@ -385,6 +597,116 @@ def _create_receipt(event: Dict[str, Any], origin: str) -> Dict[str, Any]:
     )
 
 
+
+def _parse_money(value: str) -> Optional[float]:
+    if not value:
+        return None
+    # Keep digits, dot, comma, minus
+    import re
+    s = value.strip()
+    s = s.replace("€", "").replace("$", "")
+    s = s.replace(" ", "")
+    # If comma used as decimal separator, convert to dot
+    # If both comma and dot exist, assume dot is decimal and remove commas as thousands separators
+    if "," in s and "." in s:
+        s = s.replace(",", "")
+    else:
+        s = s.replace(",", ".")
+    s = re.sub(r"[^0-9\.-]", "", s)
+    if not s or s in {".", "-", "-.", ".-"}:
+        return None
+    try:
+        return float(s)
+    except Exception:
+        return None
+
+
+def _infer_receipt_fields_from_summary(fields: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Inferisce i campi principali da:
+    - output normalizzato di _extract_summary_fields() (keys: payee, date_raw, total_raw, tax_raw, total, tax, vat_rate_raw)
+    - oppure (per compatibilità) da mappe Textract grezze con chiavi tipo VENDOR_NAME, INVOICE_RECEIPT_DATE, TOTAL, TAX...
+    """
+    def _pick(*keys: str) -> Optional[str]:
+        for k in keys:
+            v = fields.get(k)
+            if v is None:
+                continue
+            if isinstance(v, (int, float)):
+                return str(v)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+        return None
+
+    # Supporta sia schema "normalizzato" che "grezzo"
+    payee = _pick("payee", "VENDOR_NAME", "SUPPLIER_NAME", "MERCHANT_NAME", "NAME")
+    date_raw = _pick("date_raw", "INVOICE_RECEIPT_DATE", "TRANSACTION_DATE", "DATE")
+    total_raw = _pick("total_raw", "TOTAL", "AMOUNT_PAID", "AMOUNT_DUE")
+    vat_raw = _pick("tax_raw", "tax", "TAX", "VAT", "TOTAL_TAX")
+    vat_rate_raw = _pick("vat_rate_raw")
+
+    # Normalizza data a YYYY-MM-DD quando possibile
+    date_norm = None
+    if date_raw:
+        s = date_raw.strip()
+        from datetime import datetime
+        for fmt in ("%d-%m-%Y", "%d/%m/%Y", "%Y-%m-%d", "%Y/%m/%d", "%d.%m.%Y"):
+            try:
+                date_norm = datetime.strptime(s[:10], fmt).date().isoformat()
+                break
+            except Exception:
+                pass
+        if date_norm is None:
+            m = re.match(r"^(\d{1,2})[\-/](\d{1,2})[\-/](\d{2})$", s)
+            if m:
+                d, mo, y = m.groups()
+                try:
+                    date_norm = datetime.strptime(f"{d}-{mo}-20{y}", "%d-%m-%Y").date().isoformat()
+                except Exception:
+                    pass
+
+    # Totale / IVA: se _extract_summary_fields ha già messo numeri, usa quelli
+    total_val = fields.get("total")
+    if total_val is None and total_raw:
+        total_val = _parse_money(total_raw)
+
+    vat_val = fields.get("tax")
+    if vat_val is None and vat_raw:
+        vat_val = _parse_money(vat_raw)
+
+    # Aliquota IVA (best-effort)
+    vat_rate = None
+    if isinstance(vat_rate_raw, str) and "%" in vat_rate_raw:
+        m = re.search(r"(\d{1,2}(?:[\.,]\d+)?)\s*%", vat_rate_raw)
+        if m:
+            try:
+                vat_rate = float(m.group(1).replace(",", "."))
+            except Exception:
+                vat_rate = None
+    if vat_rate is None and isinstance(total_val, (int, float)) and isinstance(vat_val, (int, float)):
+        try:
+            if total_val > 0 and vat_val > 0 and total_val > vat_val:
+                base = total_val - vat_val
+                if base > 0:
+                    r = (vat_val / base) * 100.0
+                    if 0.5 <= r <= 30:
+                        vat_rate = round(r, 2)
+        except Exception:
+            pass
+
+    out: Dict[str, Any] = {}
+    if payee:
+        out["payee"] = payee
+    if date_norm:
+        out["date"] = date_norm
+    if total_val is not None:
+        out["total"] = total_val
+    if vat_val is not None:
+        out["vat"] = vat_val
+    if vat_rate is not None:
+        out["vatRate"] = vat_rate
+    return out
+
 def _list_receipts(event: Dict[str, Any], origin: str) -> Dict[str, Any]:
     missing = _require_env(origin)
     if missing:
@@ -403,7 +725,22 @@ def _list_receipts(event: Dict[str, Any], origin: str) -> Dict[str, Any]:
         items = resp.get("Items", [])
         out = []
         for it in items:
-            rid = it.get("receiptId")
+            # receiptId can be stored or derived from SK
+            rid = it.get("receiptId") or (it.get("SK", "").split("#", 1)[1] if isinstance(it.get("SK"), str) and it.get("SK", "").startswith("RECEIPT#") else None)
+            inferred: Dict[str, Any] = {}
+            has_ocr = False
+            if rid:
+                key_ocr = _s3_key_ocr(sub, rid)
+                has_ocr = _s3_exists(key_ocr)
+                if has_ocr:
+                    ocr_json = _s3_get_json(key_ocr)
+                    if ocr_json:
+                        summary = _extract_summary_fields(ocr_json)
+                        inferred = _infer_receipt_fields_from_summary(summary.get("fields") or {})
+                        # Persist missing fields opportunistically
+                        updated = _persist_inferred_fields(sub, rid, it, inferred, has_ocr=True)
+                        if updated:
+                            it = updated
             out.append(
                 {
                     "id": rid,
@@ -411,12 +748,14 @@ def _list_receipts(event: Dict[str, Any], origin: str) -> Dict[str, Any]:
                     "status": it.get("status"),
                     "createdAt": it.get("createdAt"),
                     "updatedAt": it.get("updatedAt"),
-                    "payee": it.get("payee"),
-                    "total": it.get("total"),  # CORRETTO: era "amount"
-                    "date": it.get("date"),
-                    "vat": it.get("vat"),
-                    "vatRate": it.get("vatRate"),
+                    "payee": it.get("payee") or inferred.get("payee"),
+                    "total": it.get("total") if it.get("total") is not None else inferred.get("total"),
+                    "date": it.get("date") or inferred.get("date"),
+                    "vat": it.get("vat") if it.get("vat") is not None else inferred.get("vat"),
+                    "vatRate": it.get("vatRate") if it.get("vatRate") is not None else inferred.get("vatRate"),
                     "category": it.get("category"),
+                    "ynabExportedAt": it.get("ynab_exported_at"),
+                    "ynab_exported_at": it.get("ynab_exported_at"),
                     "notes": it.get("note"),
                     "s3Key": it.get("s3Key"),
                 }
@@ -468,33 +807,52 @@ def _get_receipt(event: Dict[str, Any], origin: str, receipt_id: str) -> Dict[st
     ocr_json = _s3_get_json(key_ocr) if has_ocr else None
     summary = _extract_summary_fields(ocr_json) if ocr_json else {"fields": {}, "confidence": {}}
 
+    inferred = _infer_receipt_fields_from_summary(summary.get("fields") or {})
+
+    # Persist inferred fields immediately (fills drafts on reopen)
+    if db_item and has_ocr and inferred:
+        updated = _persist_inferred_fields(sub, receipt_id, db_item, inferred, has_ocr=True)
+        if updated:
+            db_item = updated
+
     processed_url = _presigned_get(key_processed, 900) if has_processed else None
 
-    # 2. Build response with DynamoDB values taking precedence over OCR
+    # 2. Build response
     response_data = {
         "receiptId": receipt_id,
-        "status": status,
+        "status": (db_item.get("status") if db_item else None) or "NEW",
         "artifacts": {
             "originalKey": key_original,
-            "processedKey": key_processed if has_processed else None,
+            "processedKey": key_processed,
             "ocrKey": key_ocr if has_ocr else None,
             "processedUrl": processed_url,
+            "ocrPresignedUrl": _presigned_get(key_ocr, 900) if has_ocr else None,
         },
-        "ocr": {"summary": summary, "raw": ocr_json},
+        # Start with OCR-inferred values (best effort), then override with persisted values from DynamoDB.
+        "payee": inferred.get("payee"),
+        "date": inferred.get("date"),
+        "total": inferred.get("total"),
+        "vat": inferred.get("vat"),
+        "vatRate": inferred.get("vatRate"),
+        "note": None,
+        "category": None,
+        "createdAt": (db_item.get("createdAt") if db_item else None),
+        "updatedAt": (db_item.get("updatedAt") if db_item else None),
     }
 
-    # 3. Add user-edited fields from DynamoDB (overrides OCR values)
     if db_item:
-        response_data["payee"] = db_item.get("payee")
-        response_data["date"] = db_item.get("date")
-        response_data["total"] = db_item.get("total")
-        response_data["vat"] = db_item.get("vat")
-        response_data["vatRate"] = db_item.get("vatRate")
+        # Persisted values have priority (user-edited / confirmed).
+        for k in ["payee", "date", "total", "vat", "vatRate", "note", "category", "createdAt", "updatedAt"]:
+            v = db_item.get(k)
+            if v is not None:
+                response_data[k] = v
         response_data["note"] = db_item.get("note")
         response_data["category"] = db_item.get("category")
         response_data["createdAt"] = db_item.get("createdAt")
         response_data["updatedAt"] = db_item.get("updatedAt")
         response_data["confirmedAt"] = db_item.get("confirmedAt")
+        response_data["ynabExportedAt"] = db_item.get("ynab_exported_at")
+        response_data["ynab_exported_at"] = db_item.get("ynab_exported_at")
 
     return _json(200, response_data, origin)
 
@@ -528,6 +886,12 @@ def _update_receipt(event: Dict[str, Any], origin: str, receipt_id: str) -> Dict
     return _json(401, {"error": "unauthorized"}, origin)
 
   body = _read_json(event)
+  # ---- YNAB export tracking (optional)
+  try:
+    ynab_exported_at = _parse_ynab_exported_at(body)
+  except ValueError as e:
+    return _json(400, {"error": "validation_error", "message": str(e)}, origin)
+
   payee = (body.get("payee") or "").strip()
   date = _normalize_date(body.get("date") or "")
   total_v = (body.get("total") if "total" in body else body.get("amount"))
@@ -575,7 +939,8 @@ def _update_receipt(event: Dict[str, Any], origin: str, receipt_id: str) -> Dict
   set_attr("vat", ":v", vat if vat else None)
   set_attr("vatRate", ":vr", vat_rate if vat_rate else None)
   set_attr("note", ":n", note if note else None)
-  category = (body.get("category") or "").strip()
+  # Category: accept multiple key names (UI may send categoryId/category_id)
+  category = (body.get("category") or body.get("categoryId") or body.get("category_id") or "").strip()
   set_attr("category", ":cat", category if category else None)
 
 
@@ -587,6 +952,18 @@ def _update_receipt(event: Dict[str, Any], origin: str, receipt_id: str) -> Dict
       set_attr("gsi1pk", ":gpk", pk)
       set_attr("gsi1sk", ":gsk", f"STATUS#{status}#{now}")
 
+
+  # Persist YNAB exported timestamp in DynamoDB as snake_case attribute: ynab_exported_at
+  # - if field not present in payload: do nothing
+  # - if null/empty: REMOVE attribute
+  # - else: SET attribute to ISO string
+  if ynab_exported_at is not _MISSING:
+    if ynab_exported_at is None:
+      expr += " REMOVE ynab_exported_at"
+    else:
+      names["#yea"] = "ynab_exported_at"
+      values[":yea"] = ynab_exported_at
+      expr += ", #yea=:yea"
   table = _receipts_table()
   try:
     resp = table.update_item(
@@ -605,71 +982,247 @@ def _update_receipt(event: Dict[str, Any], origin: str, receipt_id: str) -> Dict
   item = resp.get("Attributes") or {}
   return _json(200, {"receiptId": receipt_id, "item": item}, origin)
 
+def _delete_receipt(event: Dict[str, Any], origin: str, receipt_id: str) -> Dict[str, Any]:
+    """Delete a receipt ONLY if it's not confirmed.
+    Also deletes related S3 objects (original/processed/ocr) best-effort.
+    """
+    missing = _require_env(origin)
+    if missing:
+        return missing
+
+    sub = _user_sub(event)
+    if not sub:
+        return _json(401, {"message": "Unauthorized"}, origin)
+
+    pk = f"USER#{sub}"
+    sk = f"RECEIPT#{receipt_id}"
+
+    # Delete from Dynamo with a condition: must NOT be confirmed.
+    try:
+        resp = _receipts_table().delete_item(
+            Key={"PK": pk, "SK": sk},
+            ConditionExpression="attribute_not_exists(confirmedAt) AND (attribute_not_exists(#st) OR #st <> :c)",
+            ExpressionAttributeNames={"#st": "status"},
+            ExpressionAttributeValues={":c": "CONFIRMED"},
+            ReturnValues="ALL_OLD",
+        )
+    except ClientError as e:
+        code = e.response.get("Error", {}).get("Code", "")
+        if code == "ConditionalCheckFailedException":
+            return _json(409, {"error": "cannot_delete_confirmed", "message": "Cannot delete a confirmed receipt"}, origin)
+        if code == "ResourceNotFoundException":
+            return _json(404, {"error": "not_found", "message": "Receipt not found"}, origin)
+        # Could also be missing item (conditional fails): treat as 404-ish
+        msg = str(e)
+        return _json(500, {"error": "db_delete_failed", "message": msg}, origin)
+
+    old = resp.get("Attributes") or {}
+    if not old:
+        # nothing deleted (item didn't exist)
+        return _json(404, {"error": "not_found", "message": "Receipt not found"}, origin)
+
+    # Best-effort cleanup in S3 (do not fail deletion if objects are missing)
+    keys = set()
+
+    # stored original key
+    if old.get("s3Key"):
+        keys.add(old["s3Key"])
+    # computed defaults
+    keys.add(_s3_key_original(sub, receipt_id))
+    keys.add(_s3_key_processed(sub, receipt_id))
+    keys.add(_s3_key_ocr(sub, receipt_id))
+
+    # sometimes stored under these
+    for k in ("processedKey", "ocrRawKey", "ocrKey"):
+        if old.get(k):
+            keys.add(old[k])
+
+    # batch delete (up to 1000)
+    try:
+        objs = [{"Key": k} for k in keys if isinstance(k, str) and k.strip()]
+        if objs:
+            s3.delete_objects(Bucket=UPLOADS_BUCKET, Delete={"Objects": objs, "Quiet": True})
+    except ClientError:
+        # ignore cleanup errors
+        pass
+
+    return _json(200, {"ok": True, "deletedReceiptId": receipt_id}, origin)
+
+
+
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     origin = _pick_allow_origin(event)
-    path = _path(event)
-    method = _method(event)
+    try:
+        path = _path(event)
+        method = _method(event)
 
-    # ---- Trial / entitlement guard (blocks only premium endpoints)
-    from entitlements import entitlement_guard
-    blocked = entitlement_guard(event, origin, _json)
-    if blocked:
-        return blocked
+        # ---- Trial / entitlement guard (blocks only premium endpoints)
+        from entitlements import entitlement_guard
+        blocked = entitlement_guard(event, origin, _json)
+        if blocked:
+            return blocked
 
-    if method == "OPTIONS":
-        headers = _cors(origin)
-        # HTTP API CORS may also add headers, but this keeps Lambda consistent and safe.
-        return {"statusCode": 200, "headers": headers, "body": "{}"}
+        if method == "OPTIONS":
+            headers = _cors(origin)
+            # HTTP API CORS may also add headers, but this keeps Lambda consistent and safe.
+            return {"statusCode": 200, "headers": headers, "body": "{}"}
 
-    if path == "/auth/exchange" and method == "POST":
-        payload = _read_json(event)
-        code = str(payload.get("code") or "")
-        redirect_uri = str(payload.get("redirectUri") or payload.get("redirect_uri") or "")
-        code_verifier = str(payload.get("codeVerifier") or payload.get("code_verifier") or "")
+        if path == "/auth/exchange" and method == "POST":
+            payload = _read_json(event)
+            code = str(payload.get("code") or "")
+            redirect_uri = str(payload.get("redirectUri") or payload.get("redirect_uri") or "")
+            code_verifier = str(payload.get("codeVerifier") or payload.get("code_verifier") or "")
 
-        if not code or not redirect_uri or not code_verifier:
-            return _json(400, {"error": "invalid_request", "error_description": "Missing code / redirectUri / codeVerifier"}, origin)
+            if not code or not redirect_uri or not code_verifier:
+                return _json(400, {"error": "invalid_request", "error_description": "Missing code / redirectUri / codeVerifier"}, origin)
 
-        try:
-            tokens = _cognito_token_exchange(code=code, redirect_uri=redirect_uri, code_verifier=code_verifier)
-            return _json(200, tokens, origin)
-        except RuntimeError as e:
-            msg = str(e)
-            if "Token exchange failed:" in msg:
-                try:
-                    j = json.loads(msg.split("Token exchange failed:", 1)[1].strip())
-                    return _json(400, j, origin)
-                except Exception:
-                    return _json(400, {"error": "invalid_grant", "error_description": msg}, origin)
-            return _json(500, {"error": "server_error", "error_description": msg}, origin)
+            try:
+                tokens = _cognito_token_exchange(code=code, redirect_uri=redirect_uri, code_verifier=code_verifier)
+                return _json(200, tokens, origin)
+            except RuntimeError as e:
+                msg = str(e)
+                if "Token exchange failed:" in msg:
+                    try:
+                        j = json.loads(msg.split("Token exchange failed:", 1)[1].strip())
+                        return _json(400, j, origin)
+                    except Exception:
+                        return _json(400, {"error": "invalid_grant", "error_description": msg}, origin)
+                return _json(500, {"error": "server_error", "error_description": msg}, origin)
 
-    if path == "/receipts" and method == "POST":
-        return _create_receipt(event, origin)
+        if path == "/receipts" and method == "POST":
+            return _create_receipt(event, origin)
 
-    if path == "/receipts" and method == "GET":
-        return _list_receipts(event, origin)
+        if path == "/receipts" and method == "GET":
+            return _list_receipts(event, origin)
 
-    if path.startswith("/receipts/") and method == "GET":
-        receipt_id = path.split("/", 2)[2]
-        return _get_receipt(event, origin, receipt_id)
+        if path.startswith("/receipts/") and method == "GET":
+            receipt_id = path.split("/", 2)[2]
+            return _get_receipt(event, origin, receipt_id)
 
-    if path.startswith("/receipts/") and method == "PUT":
-        receipt_id = path.split("/", 2)[2]
-        return _update_receipt(event, origin, receipt_id)
+        if path.startswith("/receipts/") and method == "PUT":
+            receipt_id = path.split("/", 2)[2]
+            return _update_receipt(event, origin, receipt_id)
 
-    if path == "/me" and method == "GET":
-        return _get_me(event, origin)
+        if path.startswith("/receipts/") and method == "DELETE":
+            receipt_id = path.split("/", 2)[2]
+            return _delete_receipt(event, origin, receipt_id)
 
-    if path == "/billing/checkout" and method == "POST":
-        from billing import create_checkout_session
-        return create_checkout_session(event, _json, origin)
 
-    if path == "/billing/portal" and method == "POST":
-        from billing import create_portal_session
-        return create_portal_session(event, _json, origin)
+        if path == "/me" and method == "GET":
+            return _get_me(event, origin)
 
-    if path == "/webhooks/stripe" and method == "POST":
-        from stripe_webhook import handle_stripe_webhook
-        return handle_stripe_webhook(event, origin, _json)
+        if path == "/categories" and method == "GET":
+            sub = _user_sub(event)
+            if not sub:
+                return _json(401, {"message": "Unauthorized"}, origin)
+            return _json(200, _get_user_categories(sub), origin)
 
-    return _json(404, {"message": "Not Found"}, origin)
+
+        if path == "/categories" and method == "POST":
+            sub = _user_sub(event)
+            if not sub:
+                return _json(401, {"message": "Unauthorized"}, origin)
+
+            body = _parse_json_body(event)
+            # Accept payloads:
+            # 1) { "name": "Groceries" } (Lovable add-category modal)
+            # 2) { "category": "Groceries" }
+            # 3) { "value": "Groceries" }
+            # 4) "Groceries"
+            name = None
+            if isinstance(body, dict):
+                name = body.get("name") or body.get("category") or body.get("value")
+            elif isinstance(body, str):
+                name = body
+            if not isinstance(name, str) or not name.strip():
+                return _json(400, {"message": "Invalid payload. Expected {name: string}."}, origin)
+
+            name = name.strip()
+            # Load existing categories
+            current = _get_user_categories(sub).get("categories") or []
+            if not isinstance(current, list):
+                current = []
+            # Append if not present (case-insensitive)
+            lowered = {str(x).strip().lower() for x in current if str(x).strip()}
+            if name.lower() not in lowered:
+                current.append(name)
+
+            # Persist using same normalization rules as PUT handler (reusing logic by calling PUT-style block)
+            # Normalize, de-dup, cap.
+            cleaned = []
+            seen = set()
+            for x in current:
+                s = str(x).strip()
+                if not s:
+                    continue
+                if s.lower() in seen:
+                    continue
+                seen.add(s.lower())
+                cleaned.append(s)
+                if len(cleaned) >= 50:
+                    break
+
+            if USER_CATEGORIES_TABLE:
+                _categories_table().put_item(
+                    Item={
+                        "PK": f"USER#{sub}",
+                        "SK": "CATEGORIES",
+                        "categories": cleaned,
+                        "updatedAt": int(time.time() * 1000),
+                    }
+                )
+
+            return _json(200, {"categories": cleaned or DEFAULT_CATEGORIES, "source": "user" if cleaned else "default"}, origin)
+
+        if path == "/categories" and method == "PUT":
+            sub = _user_sub(event)
+            if not sub:
+                return _json(401, {"message": "Unauthorized"}, origin)
+            body = _parse_json_body(event)
+
+            # Accept multiple payload shapes for backwards-compatibility:
+            # 1) { "categories": ["A","B"] }   (preferred)
+            # 2) ["A","B"]                     (legacy / UI convenience)
+            # 3) { "items": ["A","B"] }        (tolerated)
+            categories = None
+            if isinstance(body, dict):
+                categories = body.get("categories")
+                if categories is None:
+                    categories = body.get("items")
+            elif isinstance(body, list):
+                categories = body
+
+            if not isinstance(categories, list) or not all(isinstance(x, str) for x in categories):
+                return _json(400, {"message": "Invalid payload. Expected {categories: string[]} (or a JSON string[])."}, origin)
+            # normalize: trim, de-dup, drop empty, cap length
+            cleaned = []
+            seen = set()
+            for raw in categories:
+                name = (raw or "").strip()
+                if not name:
+                    continue
+                if name.lower() in seen:
+                    continue
+                seen.add(name.lower())
+                cleaned.append(name[:60])
+                if len(cleaned) >= 50:
+                    break
+            return _json(200, _put_user_categories(sub, cleaned), origin)
+
+        if path == "/billing/checkout" and method == "POST":
+            from billing import create_checkout_session
+            return create_checkout_session(event, _json, origin)
+
+        if path == "/billing/portal" and method == "POST":
+            from billing import create_portal_session
+            return create_portal_session(event, _json, origin)
+
+        if path == "/webhooks/stripe" and method == "POST":
+            from stripe_webhook import handle_stripe_webhook
+            return handle_stripe_webhook(event, origin, _json)
+
+        return _json(404, {"message": "Not Found"}, origin)
+
+    except Exception as e:
+        # Garantisce sempre una risposta JSON con header CORS (evita "CORS missing" in browser)
+        return _json(500, {"error": "internal_error", "message": str(e)}, origin)

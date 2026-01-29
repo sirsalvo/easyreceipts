@@ -7,7 +7,7 @@ stack_name = "easyreceipts-dev"
 region = "eu-central-1"
 s3_bucket = "easyreceipts-sam-artifacts-408959241421-euc1"
 capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM"
-parameter_overrides = "AppName=easyreceipts Env=dev UiDomainPrefix=easyreceipts-dev-ui-20260114 UiCallbackUrl=https://d33xe02gdlyt8z.cloudfront.net/auth/callback UiLogoutUrl=https://d33xe02gdlyt8z.cloudfront.net/ UiAllowedOrigins=https://d33xe02gdlyt8z.cloudfront.net,http://localhost:8088,http://localhost:8080,http://localhost:5173"
+parameter_overrides = "AppName=easyreceipts Env=dev UiDomainPrefix=easyreceipts-dev-ui-20260114 UiCallbackUrl=https://d33xe02gdlyt8z.cloudfront.net/auth/callback UiLogoutUrl=https://d33xe02gdlyt8z.cloudfront.net/ UiAllowedOrigins=https://d33xe02gdlyt8z.cloudfront.net,http://localhost:8088,http://localhost:8080,http://localhost:5173 AppBaseUrl=https://d33xe02gdlyt8z.cloudfront.net"
 
 
 [prod]
@@ -17,4 +17,4 @@ stack_name = "easyreceipts-prod"
 region = "eu-central-1"
 s3_bucket = "easyreceipts-sam-artifacts-408959241421-euc1"
 capabilities = "CAPABILITY_IAM CAPABILITY_NAMED_IAM"
-parameter_overrides = "AppName=easyreceipts Env=prod UiDomainPrefix=easyreceipts-prod-ui UiCallbackUrl=https://example.com/callback UiLogoutUrl=https://example.com/ UiAllowedOrigins=*"
+parameter_overrides = "AppName=easyreceipts Env=prod UiDomainPrefix=easyreceipts-prod-ui UiCallbackUrl=https://app.spendifyapp.com/auth/callback UiLogoutUrl=https://app.spendifyapp.com/ UiAllowedOrigins=https://app.spendifyapp.com AppBaseUrl=https://app.spendifyapp.com"
