@@ -58,22 +58,16 @@ export const apiRequest = async <T>(
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch (networkError) {
-    // Network error - could be CORS or connectivity issue
-    // Check if token might be expired (common cause of CORS-like failures after 401)
+    // Network error - could be CORS, connectivity issue, or a backend error without CORS headers.
+    // NON considerarlo automaticamente "session expired": logout solo su 401/403 o invalid_token.
     console.error('Network error during API request:', networkError);
-    
-    // If we have a token but get network error, it might be expired
-    if (token && token !== 'dev-mode-token' && !devMode) {
-      clearAuthSession();
-      toast({
-        title: 'Session expired',
-        description: 'Please login again.',
-        variant: 'destructive',
-      });
-      window.location.href = '/login';
-      throw new Error('Session expired - please login again');
-    }
-    
+
+    toast({
+      title: 'Network error',
+      description: 'Unable to reach the API (CORS / connectivity / server error). Please retry.',
+      variant: 'destructive',
+    });
+
     throw new Error('NetworkError when attempting to fetch resource.');
   }
 
@@ -93,7 +87,7 @@ export const apiRequest = async <T>(
   }
 
   // In dev mode, don't redirect on 401 - show the actual error
-  if (response.status === 401 && !devMode) {
+  if ((response.status === 401 || response.status === 403) && !devMode) {
     clearAuthSession();
     toast({
       title: 'Session expired',

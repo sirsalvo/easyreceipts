@@ -30,7 +30,13 @@ export const useCategories = (): UseCategoriesReturn => {
       const data = await getCategories();
       setCategories(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load categories');
+      const message = err instanceof Error ? err.message : String(err);
+      // Provide a user-friendly message for common errors
+      if (message.includes('Not Found') || message.includes('404')) {
+        setError('Categories feature is not available. The API endpoint may not be deployed yet.');
+      } else {
+        setError(message || 'Failed to load categories');
+      }
       console.error('Error fetching categories:', err);
     } finally {
       setLoading(false);
