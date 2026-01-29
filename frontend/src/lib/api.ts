@@ -347,3 +347,8 @@ export interface PortalResponse {
 export const createBillingPortal = async (): Promise<PortalResponse> => {
   return apiRequest<PortalResponse>('/billing/portal', { method: 'POST' });
 };
+
+// Delete receipt (only drafts can be deleted)
+export const deleteReceipt = async (receiptId: string): Promise<void> => {
+  await apiRequest<void>(`/receipts/${receiptId}`, { method: 'DELETE' });
+};

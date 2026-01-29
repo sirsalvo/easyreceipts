@@ -13,13 +13,24 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
-import { getReceipt, updateReceipt, UpdateReceiptPayload } from '@/lib/api';
+import { getReceipt, updateReceipt, deleteReceipt, UpdateReceiptPayload } from '@/lib/api';
 import { normalizeReceiptResponse, NormalizedReceipt } from '@/lib/receiptNormalizer';
 import { getCachedReceipt, updateCachedReceipt } from '@/lib/receiptCache';
 import { clearDraftOverride, getDraftOverride, setDraftOverride } from '@/lib/receiptDraftStore';
 import { useCategories } from '@/hooks/useCategories';
-import { ArrowLeft, Loader2, Save, Check, AlertCircle, Maximize2, X } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Check, AlertCircle, Maximize2, X, Trash2 } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
 import BottomNavigation from '@/components/BottomNavigation';
 
@@ -51,6 +62,7 @@ const Review = () => {
   const { categories, loading: categoriesLoading, getCategoryById } = useCategories();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [receipt, setReceipt] = useState<NormalizedReceipt | null>(null);
   const [formData, setFormData] = useState<FormData>({
     date: '',
@@ -63,6 +75,9 @@ const Review = () => {
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [showFullImage, setShowFullImage] = useState(false);
+
+  // Check if receipt is a draft (can be deleted)
+  const isDraft = receipt && receipt.status !== 'CONFIRMED';
 
   useEffect(() => {
     const fetchReceipt = async () => {
@@ -244,6 +259,44 @@ const Review = () => {
       });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!receiptId) return;
+
+    setDeleting(true);
+    try {
+      await deleteReceipt(receiptId);
+      
+      // Clear local caches
+      clearDraftOverride(receiptId);
+
+      toast({
+        title: 'Draft deleted',
+        description: 'The receipt draft has been deleted.',
+      });
+
+      navigate('/receipts');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+      
+      // Handle 409 Conflict - confirmed receipt cannot be deleted
+      if (errorMessage.includes('409') || errorMessage.toLowerCase().includes('conflict')) {
+        toast({
+          title: 'Cannot delete',
+          description: 'Cannot delete a confirmed receipt.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Error deleting receipt',
+          description: errorMessage,
+          variant: 'destructive',
+        });
+      }
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -463,32 +516,71 @@ const Review = () => {
 
       {/* Fixed Bottom Actions */}
       <div className="fixed bottom-0 left-0 right-0 p-4 pb-6 bg-background border-t border-border z-50">
-        <div className="max-w-lg mx-auto flex gap-3">
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={() => handleSubmit('DRAFT')}
-            disabled={saving}
-          >
-            {saving ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Save className="h-4 w-4 mr-2" />
-            )}
-            Save Draft
-          </Button>
-          <Button
-            className="flex-1"
-            onClick={() => handleSubmit('CONFIRMED')}
-            disabled={saving}
-          >
-            {saving ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Check className="h-4 w-4 mr-2" />
-            )}
-            Confirm
-          </Button>
+        <div className="max-w-lg mx-auto space-y-3">
+          <div className="flex gap-3">
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => handleSubmit('DRAFT')}
+              disabled={saving || deleting}
+            >
+              {saving ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4 mr-2" />
+              )}
+              Save Draft
+            </Button>
+            <Button
+              className="flex-1"
+              onClick={() => handleSubmit('CONFIRMED')}
+              disabled={saving || deleting}
+            >
+              {saving ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4 mr-2" />
+              )}
+              Confirm
+            </Button>
+          </div>
+          
+          {/* Delete Draft Button - only shown for drafts */}
+          {isDraft && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  disabled={saving || deleting}
+                >
+                  {deleting ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2" />
+                  )}
+                  Delete Draft
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete Draft</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to delete this draft receipt? This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </div>
       <BottomNavigation />
