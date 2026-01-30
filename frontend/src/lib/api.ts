@@ -58,13 +58,27 @@ export const apiRequest = async <T>(
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch (networkError) {
-    // Network error - could be CORS, connectivity issue, or a backend error without CORS headers.
-    // NON considerarlo automaticamente "session expired": logout solo su 401/403 o invalid_token.
+    // Network error with no response - usually means:
+    // 1. Token expired and backend 401 has no CORS headers (browser blocks response)
+    // 2. Actual connectivity issue
+    // Per il contesto Spendify, trattiamo questo come sessione scaduta se l'utente ha un token.
     console.error('Network error during API request:', networkError);
 
+    if (!devMode && token) {
+      // Assume session expired - clear tokens and redirect to login
+      clearAuthSession();
+      toast({
+        title: 'Sessione scaduta',
+        description: 'Effettua di nuovo il login',
+      });
+      window.location.href = '/login';
+      throw new Error('Session expired (network error)');
+    }
+
+    // Dev mode or no token - show generic network error
     toast({
       title: 'Network error',
-      description: 'Unable to reach the API (CORS / connectivity / server error). Please retry.',
+      description: 'Unable to reach the API. Please check your connection and retry.',
       variant: 'destructive',
     });
 
