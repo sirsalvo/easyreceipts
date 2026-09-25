@@ -29,7 +29,7 @@ import re
 import uuid
 import urllib.parse
 import urllib.request
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import boto3
 from boto3.dynamodb.conditions import Key
@@ -707,6 +707,55 @@ def _infer_receipt_fields_from_summary(fields: Dict[str, Any]) -> Dict[str, Any]
         out["vatRate"] = vat_rate
     return out
 
+# Safety cap on how many receipts a single list call will return.
+# Not a page size: the query below walks the whole user partition. The cap only
+# exists so one pathological account cannot blow up the Lambda response
+# (API Gateway caps payloads at 6 MB). When it bites we say so in the response
+# instead of silently dropping data, which is exactly the bug this replaces.
+LIST_MAX_ITEMS = 2000
+
+# OCR fallback is an S3 round trip per receipt, so it is only attempted for
+# receipts that actually need it, and never more than this many per request.
+LIST_OCR_FALLBACK_MAX = 15
+
+
+def _is_blank(value: Any) -> bool:
+    """True when a DynamoDB attribute carries no usable value."""
+    if value is None:
+        return True
+    if isinstance(value, str) and not value.strip():
+        return True
+    return False
+
+
+def _needs_ocr_fallback(item: Dict[str, Any]) -> bool:
+    """
+    Whether a receipt is worth reading back from its OCR artifact.
+
+    Confirmed receipts have been reviewed by the user, so whatever is in the
+    database wins and there is nothing to infer. For the rest we only pay for
+    S3 when the fields the UI actually shows are still empty.
+    """
+    if item.get("status") == "CONFIRMED":
+        return False
+    return all(_is_blank(item.get(k)) for k in ("payee", "date", "total"))
+
+
+def _receipt_sort_key(item: Dict[str, Any]):
+    """
+    Most recent first, by receipt date and falling back to creation time.
+
+    The table's sort key is RECEIPT#<uuid4>, so the database cannot order these
+    for us; we sort here instead. Missing dates sort last rather than crashing
+    the comparison.
+    """
+    for k in ("date", "createdAt"):
+        v = item.get(k)
+        if isinstance(v, str) and v.strip():
+            return (0, v)
+    return (1, "")
+
+
 def _list_receipts(event: Dict[str, Any], origin: str) -> Dict[str, Any]:
     missing = _require_env(origin)
     if missing:
@@ -716,31 +765,64 @@ def _list_receipts(event: Dict[str, Any], origin: str) -> Dict[str, Any]:
     if not sub:
         return _json(401, {"message": "Unauthorized"}, origin)
 
+    table = _receipts_table()
+    key_condition = Key("PK").eq(f"USER#{sub}") & Key("SK").begins_with("RECEIPT#")
+
     try:
-        resp = _receipts_table().query(
-            KeyConditionExpression=Key("PK").eq(f"USER#{sub}") & Key("SK").begins_with("RECEIPT#"),
-            Limit=50,
-            ScanIndexForward=False,
-        )
-        items = resp.get("Items", [])
+        # Walk the whole partition. DynamoDB caps a single Query at 1 MB, so a
+        # user with more receipts than that gets several pages; the previous
+        # implementation read one page with Limit=50 and discarded the rest,
+        # which made every receipt beyond the 50th invisible in the app and
+        # missing from every export.
+        items: List[Dict[str, Any]] = []
+        start_key: Optional[Dict[str, Any]] = None
+        truncated = False
+
+        while True:
+            kwargs: Dict[str, Any] = {"KeyConditionExpression": key_condition}
+            if start_key:
+                kwargs["ExclusiveStartKey"] = start_key
+
+            resp = table.query(**kwargs)
+            items.extend(resp.get("Items", []))
+            start_key = resp.get("LastEvaluatedKey")
+
+            if not start_key:
+                break
+            if len(items) >= LIST_MAX_ITEMS:
+                truncated = True
+                break
+
+        if len(items) > LIST_MAX_ITEMS:
+            items = items[:LIST_MAX_ITEMS]
+            truncated = True
+
+        items.sort(key=_receipt_sort_key, reverse=True)
+
         out = []
+        ocr_budget = LIST_OCR_FALLBACK_MAX
+
         for it in items:
             # receiptId can be stored or derived from SK
-            rid = it.get("receiptId") or (it.get("SK", "").split("#", 1)[1] if isinstance(it.get("SK"), str) and it.get("SK", "").startswith("RECEIPT#") else None)
+            rid = it.get("receiptId") or (
+                it.get("SK", "").split("#", 1)[1]
+                if isinstance(it.get("SK"), str) and it.get("SK", "").startswith("RECEIPT#")
+                else None
+            )
+
             inferred: Dict[str, Any] = {}
-            has_ocr = False
-            if rid:
+            if rid and ocr_budget > 0 and _needs_ocr_fallback(it):
+                ocr_budget -= 1
                 key_ocr = _s3_key_ocr(sub, rid)
-                has_ocr = _s3_exists(key_ocr)
-                if has_ocr:
-                    ocr_json = _s3_get_json(key_ocr)
-                    if ocr_json:
-                        summary = _extract_summary_fields(ocr_json)
-                        inferred = _infer_receipt_fields_from_summary(summary.get("fields") or {})
-                        # Persist missing fields opportunistically
-                        updated = _persist_inferred_fields(sub, rid, it, inferred, has_ocr=True)
-                        if updated:
-                            it = updated
+                ocr_json = _s3_get_json(key_ocr)
+                if ocr_json:
+                    summary = _extract_summary_fields(ocr_json)
+                    inferred = _infer_receipt_fields_from_summary(summary.get("fields") or {})
+                    # Persist missing fields opportunistically
+                    updated = _persist_inferred_fields(sub, rid, it, inferred, has_ocr=True)
+                    if updated:
+                        it = updated
+
             out.append(
                 {
                     "id": rid,
@@ -761,7 +843,7 @@ def _list_receipts(event: Dict[str, Any], origin: str) -> Dict[str, Any]:
                 }
             )
 
-        return _json(200, {"items": out}, origin)
+        return _json(200, {"items": out, "count": len(out), "truncated": truncated}, origin)
     except ClientError as e:
         return _json(500, {"error": "db_query_failed", "message": str(e)}, origin)
 
