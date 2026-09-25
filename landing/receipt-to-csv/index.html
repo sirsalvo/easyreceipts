@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Primary Meta Tags -->
+  <title>Receipt to CSV – Convert Receipt Photos to Excel or Google Sheets</title>
+  <meta name="title" content="Receipt to CSV – Convert Receipt Photos to Excel or Google Sheets" />
+  <meta name="description" content="Convert receipt photos into clean CSV files for Excel or Google Sheets. Review the extracted data and export spreadsheet-ready expenses in seconds." />
+  <meta name="keywords" content="receipt to csv, receipt to excel, receipt to google sheets, scan receipt to spreadsheet, convert receipt to csv, receipt scanner csv" />
+  <meta name="author" content="Spendify" />
+  <meta name="robots" content="index, follow" />
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="/spendify-icon.png" />
+  <link rel="apple-touch-icon" href="/spendify-icon.png" />
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://spendifyapp.com/receipt-to-csv/" />
+  <meta property="og:title" content="Receipt to CSV – Convert Receipt Photos to Excel or Google Sheets" />
+  <meta property="og:description" content="Convert receipt photos into clean CSV files for Excel or Google Sheets. Review the extracted data and export spreadsheet-ready expenses in seconds." />
+  <meta property="og:image" content="https://spendifyapp.com/spendify-icon.png" />
+  <meta property="og:site_name" content="Spendify" />
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:url" content="https://spendifyapp.com/receipt-to-csv/" />
+  <meta name="twitter:title" content="Receipt to CSV – Convert Receipt Photos to Excel or Google Sheets" />
+  <meta name="twitter:description" content="Convert receipt photos into clean CSV files for Excel or Google Sheets. Review the extracted data and export spreadsheet-ready expenses in seconds." />
+  <meta name="twitter:image" content="https://spendifyapp.com/spendify-icon.png" />
+
+  <!-- Canonical URL -->
+  <link rel="canonical" href="https://spendifyapp.com/receipt-to-csv/" />
+
+  <!-- Font Preload -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;500;600;700;800&display=swap" media="print" onload="this.media='all'" />
+  <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;500;600;700;800&display=swap" /></noscript>
+
+  <!-- Structured Data - HowTo Schema -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    "name": "How to Convert Receipt Photos to CSV",
+    "description": "Turn receipt photos into clean CSV files for Excel or Google Sheets in three simple steps.",
+    "totalTime": "PT1M",
+    "step": [
+      {
+        "@type": "HowToStep",
+        "position": 1,
+        "name": "Upload a receipt photo",
+        "text": "Take a photo or upload an image. AI extracts the date, merchant, and total automatically."
+      },
+      {
+        "@type": "HowToStep",
+        "position": 2,
+        "name": "Review and correct the extracted data",
+        "text": "Check the date, merchant name, and total amount. Fix anything the AI got wrong before exporting."
+      },
+      {
+        "@type": "HowToStep",
+        "position": 3,
+        "name": "Export as CSV",
+        "text": "Download a clean CSV file and import it into Google Sheets, Excel, or any spreadsheet app."
+      }
+    ]
+  }
+  </script>
+
+  <!-- Structured Data - Breadcrumb -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Home",
+        "item": "https://spendifyapp.com/"
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Receipt to CSV",
+        "item": "https://spendifyapp.com/receipt-to-csv/"
+      }
+    ]
+  }
+  </script>
+
+  <style>
+    :root {
+      --background: hsl(0, 0%, 100%);
+      --foreground: hsl(220, 25%, 10%);
+      --primary: hsl(217, 89%, 61%);
+      --primary-foreground: hsl(0, 0%, 100%);
+      --secondary: hsl(215, 25%, 96%);
+      --secondary-foreground: hsl(220, 25%, 20%);
+      --muted: hsl(215, 20%, 97%);
+      --muted-foreground: hsl(220, 15%, 45%);
+      --card: hsl(0, 0%, 100%);
+      --border: hsl(215, 20%, 91%);
+      --radius: 0.75rem;
+      --font-display: 'Nunito Sans', sans-serif;
+      --font-body: 'Nunito Sans', sans-serif;
+      --gradient-hero: linear-gradient(135deg, hsl(217, 89%, 61%) 0%, hsl(225, 85%, 55%) 50%, hsl(235, 75%, 50%) 100%);
+      --shadow-soft: 0 4px 20px -4px hsla(220, 25%, 10%, 0.08);
+      --shadow-card: 0 8px 32px -8px hsla(220, 25%, 10%, 0.12);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: var(--font-body);
+      background-color: var(--background);
+      color: var(--foreground);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    h1, h2, h3 { font-family: var(--font-display); line-height: 1.2; }
+    a { color: inherit; text-decoration: none; }
+
+    .container { max-width: 48rem; margin: 0 auto; padding: 0 1rem; }
+    @media (min-width: 640px) { .container { padding: 0 1.5rem; } }
+    @media (min-width: 1024px) { .container { padding: 0 2rem; } }
+
+    /* Header */
+    .header {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+      background: hsla(0, 0%, 100%, 0.95); backdrop-filter: blur(12px);
+      box-shadow: var(--shadow-soft); padding: 0.75rem 0;
+    }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; max-width: 72rem; margin: 0 auto; padding: 0 1rem; }
+    @media (min-width: 640px) { .header-inner { padding: 0 1.5rem; } }
+    @media (min-width: 1024px) { .header-inner { padding: 0 2rem; } }
+    .logo { display: flex; align-items: center; gap: 0.75rem; }
+    .logo-icon { width: 2.5rem; height: 2.5rem; border-radius: 0.75rem; }
+    .logo-text { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
+      padding: 0.625rem 1.25rem; font-family: var(--font-body); font-size: 0.875rem; font-weight: 500;
+      border-radius: var(--radius); border: none; cursor: pointer; transition: all 0.2s ease;
+    }
+    .btn-primary { background: var(--primary); color: var(--primary-foreground); }
+    .btn-primary:hover { filter: brightness(1.1); }
+    .btn-cta {
+      background: var(--gradient-hero); color: var(--primary-foreground);
+      padding: 1rem 2rem; font-size: 1rem; font-weight: 600;
+    }
+    .btn-cta:hover { filter: brightness(1.1); transform: translateY(-2px); }
+    .btn-outline {
+      background: transparent; color: var(--primary-foreground); border: 2px solid hsla(0,0%,100%,0.3);
+      padding: 1rem 2rem; font-size: 1rem; font-weight: 600;
+    }
+    .btn-outline:hover { background: hsla(0,0%,100%,0.1); }
+
+    main { padding-top: 4.5rem; }
+
+    .section { padding: 4rem 1rem; }
+    @media (min-width: 640px) { .section { padding: 5rem 1.5rem; } }
+    @media (min-width: 1024px) { .section { padding: 6rem 2rem; } }
+    .section-alt { background: var(--secondary); }
+
+    /* Hero */
+    .hero { background: var(--gradient-hero); text-align: center; padding: 5rem 1rem; }
+    @media (min-width: 640px) { .hero { padding: 6rem 1.5rem; } }
+    .hero h1 { font-size: 1.875rem; font-weight: 700; color: var(--primary-foreground); margin-bottom: 0.5rem; }
+    @media (min-width: 640px) { .hero h1 { font-size: 2.25rem; } }
+    @media (min-width: 1024px) { .hero h1 { font-size: 3rem; } }
+    .hero h2 { font-size: 1.25rem; font-weight: 600; color: hsla(0,0%,100%,0.8); margin-bottom: 1.5rem; }
+    @media (min-width: 640px) { .hero h2 { font-size: 1.5rem; } }
+    @media (min-width: 1024px) { .hero h2 { font-size: 2rem; } }
+    .hero p { font-size: 1.125rem; color: hsla(0,0%,100%,0.85); max-width: 48rem; margin: 0 auto; }
+    .hero .subtext { font-size: 1rem; color: hsla(0,0%,100%,0.7); margin-top: 0.5rem; }
+    .hero .microcopy { font-size: 0.875rem; color: hsla(0,0%,100%,0.6); margin-top: 0.5rem; }
+    .hero-buttons { display: flex; flex-direction: column; gap: 1rem; justify-content: center; align-items: center; margin-top: 2rem; }
+    @media (min-width: 640px) { .hero-buttons { flex-direction: row; } }
+
+    .section-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; text-align: center; }
+    @media (min-width: 640px) { .section-title { font-size: 1.875rem; } }
+    @media (min-width: 1024px) { .section-title { font-size: 2.25rem; } }
+
+    .prose { color: var(--muted-foreground); }
+    .prose p { font-size: 1.125rem; line-height: 1.75; margin-bottom: 1rem; }
+    .prose p:last-child { margin-bottom: 0; }
+    .prose .highlight { color: var(--foreground); font-weight: 500; }
+
+    /* Steps */
+    .steps-grid { display: grid; gap: 1.5rem; margin-top: 2rem; }
+    @media (min-width: 640px) { .steps-grid { grid-template-columns: repeat(3, 1fr); } }
+    .step-card {
+      padding: 1.5rem; border-radius: 1rem; background: var(--card);
+      border: 1px solid var(--border); box-shadow: var(--shadow-soft); text-align: center;
+    }
+    .step-number {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 2.5rem; height: 2.5rem; border-radius: 50%; background: var(--gradient-hero);
+      color: var(--primary-foreground); font-weight: 700; margin-bottom: 0.75rem;
+    }
+    .step-card h3 { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .step-card p { font-size: 0.875rem; color: var(--muted-foreground); }
+
+    /* Check list */
+    .check-list { list-style: none; }
+    .check-list li { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0; font-size: 1.125rem; }
+    .check-icon { color: var(--primary); font-weight: 700; }
+
+    /* CTA */
+    .cta-section { background: var(--gradient-hero); text-align: center; padding: 5rem 1rem; }
+    .cta-section h2 { font-size: 1.875rem; font-weight: 700; color: var(--primary-foreground); margin-bottom: 1.5rem; }
+    @media (min-width: 640px) { .cta-section h2 { font-size: 2.25rem; } }
+    .cta-section p { color: hsla(0,0%,100%,0.8); margin-top: 1rem; }
+
+    /* Links */
+    .text-link { color: var(--primary); font-weight: 500; }
+    .text-link:hover { text-decoration: underline; }
+
+    /* Footer */
+    .footer { padding: 2rem 1rem; text-align: center; border-top: 1px solid var(--border); }
+    .footer p { font-size: 0.875rem; color: var(--muted-foreground); }
+    .footer a { color: var(--primary); }
+    .footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <a href="/" class="logo">
+        <img src="/spendify-icon.png" alt="Spendify" class="logo-icon" />
+        <span class="logo-text">Spendify</span>
+      </a>
+      <a href="https://app.spendifyapp.com/login" class="btn btn-primary" target="_blank" rel="noopener noreferrer">Get Started</a>
+    </div>
+  </header>
+
+  <main>
+    <!-- Hero -->
+    <section class="hero">
+      <div class="container">
+        <h1>Turn Receipt Photos Into CSV Files</h1>
+        <h2>(for Excel &amp; Google Sheets)</h2>
+        <p>Upload a receipt, review the extracted data, and export a clean CSV file in seconds.<br>No accounting suite. No bank connections. Just structured data.</p>
+        <p class="subtext">Perfect for freelancers and small businesses tracking expenses in spreadsheets.</p>
+        <div class="hero-buttons">
+          <div style="text-align:center">
+            <a href="https://app.spendifyapp.com/login" class="btn btn-cta" target="_blank" rel="noopener noreferrer">Export Your First Receipt →</a>
+            <p class="microcopy">No credit card required.</p>
+          </div>
+          <a href="#how-it-works" class="btn btn-outline">See How It Works</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- Problem -->
+    <section class="section">
+      <div class="container">
+        <h2 class="section-title">Receipts Don't Belong in Spreadsheets</h2>
+        <div class="prose">
+          <p>If you track expenses in Excel or Google Sheets, the spreadsheet itself isn't the problem. The friction comes from manually typing receipt data — especially small or infrequent expenses.</p>
+          <p>Looking for a simple way to convert a receipt to CSV without expensive accounting software?</p>
+          <p>Receipts pile up. Entry gets postponed. Consistency breaks.</p>
+          <p class="highlight">Spendify removes just that friction.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Convert to Excel / Sheets -->
+    <section class="section section-alt">
+      <div class="container" style="text-align:center">
+        <h2 class="section-title">Convert Receipt to Excel or Google Sheets</h2>
+        <div class="prose">
+          <p>Spendify extracts key data from your receipt — date, merchant, total — and lets you download it as a CSV file that opens directly in Excel or Google Sheets.</p>
+          <p class="highlight">No formatting headaches. No manual retyping. Just spreadsheet-ready data.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- How It Works -->
+    <section id="how-it-works" class="section">
+      <div class="container">
+        <h2 class="section-title">How It Works</h2>
+        <p style="text-align:center;color:var(--muted-foreground);font-size:1.125rem;margin-bottom:1rem;">From receipt photo to CSV in three simple steps.</p>
+        <div class="steps-grid">
+          <div class="step-card">
+            <div class="step-number">1</div>
+            <h3>Upload a receipt photo</h3>
+            <p>Take a photo or upload an image. AI extracts the date, merchant, and total automatically.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-number">2</div>
+            <h3>Review and correct the data</h3>
+            <p>Check the date, merchant name, and total amount. Fix anything the AI got wrong before exporting.</p>
+          </div>
+          <div class="step-card">
+            <div class="step-number">3</div>
+            <h3>Export as CSV</h3>
+            <p>Download a clean CSV file and import it into Google Sheets, Excel, or any spreadsheet app.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Why CSV -->
+    <section class="section section-alt">
+      <div class="container" style="text-align:center">
+        <h2 class="section-title">Why CSV?</h2>
+        <p style="font-size:1.125rem;color:var(--muted-foreground);margin-bottom:1.5rem;">CSV works everywhere.</p>
+        <ul class="check-list" style="display:inline-block;text-align:left;margin-bottom:1.5rem;">
+          <li><span class="check-icon">✓</span> Google Sheets</li>
+          <li><span class="check-icon">✓</span> Microsoft Excel</li>
+          <li><span class="check-icon">✓</span> Apple Numbers</li>
+          <li><span class="check-icon">✓</span> Custom accounting systems</li>
+        </ul>
+        <div class="prose">
+          <p>No lock-in. No proprietary format.</p>
+          <p class="highlight">Just clean, structured expense data you control.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Privacy -->
+    <section class="section">
+      <div class="container">
+        <h2 class="section-title">No Bank Connections. No Syncing.</h2>
+        <div class="prose">
+          <p>Spendify does not connect to financial institutions.<br>It does not access bank accounts.<br>It does not sync transactions automatically.</p>
+          <p>You upload a receipt.<br>You review the data.<br>You choose what to export.</p>
+          <p class="highlight"><strong>That's it.</strong></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Who It's For -->
+    <section class="section section-alt">
+      <div class="container">
+        <h2 class="section-title">Built For</h2>
+        <ul class="check-list" style="max-width:36rem;margin:0 auto 1.5rem;">
+          <li><span class="check-icon">✓</span> Freelancers tracking expenses in spreadsheets</li>
+          <li><span class="check-icon">✓</span> Small business owners who don't need full accounting software</li>
+          <li><span class="check-icon">✓</span> People who want receipt-to-CSV, not a finance suite</li>
+        </ul>
+        <p style="text-align:center;color:var(--muted-foreground);font-style:italic;">Not built for replacing full bookkeeping software.</p>
+      </div>
+    </section>
+
+    <!-- Internal Links -->
+    <section class="section">
+      <div class="container" style="text-align:center">
+        <p style="font-size:1.125rem;color:var(--muted-foreground);margin-bottom:1rem;">Looking to create YNAB transactions instead? <a href="/ynab-receipts/" class="text-link">See how Spendify works with YNAB.</a></p>
+        <p style="color:var(--muted-foreground);"><a href="/" class="text-link">Back to homepage</a></p>
+      </div>
+    </section>
+
+    <!-- Final CTA -->
+    <section class="cta-section">
+      <div class="container">
+        <h2>Make Receipt Entry Frictionless</h2>
+        <a href="https://app.spendifyapp.com/login" class="btn btn-cta" target="_blank" rel="noopener noreferrer">Try Spendify →</a>
+        <p>Start with one receipt. Export to CSV instantly.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>&copy; 2026 Spendify. <a href="/">Home</a> · <a href="/ynab-receipts">YNAB Receipts</a></p>
+  </footer>
+</body>
+</html>
