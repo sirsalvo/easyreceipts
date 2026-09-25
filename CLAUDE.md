@@ -205,16 +205,14 @@ ddd0dfc chore(scripts): make check_users.sh runnable
 0cf88e4 chore(landing): sync from lovable
 ```
 
-### ⚠️ Committato ma NON deployato
+### Repo e produzione allineati (2026-09-25, sera)
 
-Repo e produzione divergono su due fronti. Il rischio è che partano in
-silenzio dentro un deploy fatto per altro.
-
-1. **`noindex` sull'app** (`cf1abce`): `frontend/index.html` e
-   `frontend/public/robots.txt` sono modificati ma la UI in produzione è ferma
-   al **2026-02-08**. Decisione ancora aperta, vedi sotto.
-2. **Ultime modifiche alla landing** (`827093e`): link reciproci, immagini
-   1200×630, footer. Da pubblicare con `./scripts/deploy_landing.sh prod`.
+Landing e UI dell'app sono stati pubblicati con tutto ciò che era in repo:
+link reciproci, home prerenderizzata, titolo e FAQ di `/receipt-to-csv/`,
+`noindex` sull'app. Le risorse JS/CSS della UI erano identiche byte per byte
+a quelle live (verificato prima del deploy), quindi il deploy della UI ha
+cambiato solo `index.html` e `robots.txt`. **Il backend non è stato toccato**
+e resta quello del 2026-09.
 
 ---
 
@@ -301,32 +299,19 @@ toglie l'`aggregateRating` inventato. `KEEP_FILES` ora protegge anche
 `sitemap.xml`: vengono da `public/` di Lovable e il sync le avrebbe riportate
 alla versione senza le correzioni SEO.
 
-### Decisioni aperte
+### Decisioni prese il 2026-09-25
 
-**`noindex` sull'app** — committato, non pubblicato. Non si può escludere la
-home dell'app e tenere `/login`: è una SPA con un solo `index.html`.
+- **`noindex, nofollow` sull'app**: pubblicato su `app.spendifyapp.com`
+  (verificato su `/`, `/login`, `/receipts`). Non si poteva escludere la home
+  tenendo `/login` (SPA con un solo `index.html`, `/login` aveva il CTR
+  migliore: 6 impression, 1 clic). Le impression caleranno di circa il 69%
+  (erano a CTR 0%): **non è una regressione**. `robots.txt` consente ancora il
+  crawl di proposito, altrimenti Google non vedrebbe il `noindex`.
+- **Titolo di `/receipt-to-csv/`**: ora `Convert Receipt Photos to Spreadsheet
+  or CSV`.
+- **FAQ di `/receipt-to-csv/`**: 5 domande con `FAQPage`, verificate nel codice.
 
-| A favore | Contro |
-|---|---|
-| `app.spendifyapp.com/`: 92 impression, CTR **0%** | `/login`: 6 impression, 1 clic, CTR **16,67%** — il migliore del sito |
-| Sulle ricerche del brand compare una pagina bianca invece della landing | |
-
-Se pubblicato, **le impression caleranno di circa il 69%**. È corretto, ma va
-messo in conto prima per non scambiarlo per una regressione.
-
-**Titolo di `/receipt-to-csv/`** — non toccato. Oggi è
-`Receipt to CSV – Convert Receipt Photos to Excel or Google Sheets`, ma tre
-query su quattro dicono **"spreadsheet"**, parola assente dal titolo.
-Modificarlo ora è difendibile; si perde solo la possibilità di attribuire
-l'effetto, avendo mosso due variabili.
-
-**FAQ per `/receipt-to-csv/`** — bozza redatta e verificata nel codice, **mai
-scritta nella pagina**, in attesa di approvazione. La pagina YNAB ha già un
-blocco `FAQPage`, questa no. Contenuti previsti: colonne del CSV (`Date,
-Merchant, Total, VAT, VAT Rate, Category, Notes, Receipt ID`), estrazione
-automatica **ma da rivedere** (scelta onesta, non è automatica al 100%),
-nessuna connessione bancaria, export selettivo con filtro per date, trial di
-14 giorni senza carta.
+Il 10/10 gli effetti di home, titolo, FAQ e `noindex` non sono separabili.
 
 ### Azioni manuali in Search Console (richiedono login)
 

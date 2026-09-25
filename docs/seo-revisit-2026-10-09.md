@@ -111,29 +111,19 @@ dati puliti, altrimenti non si capisce cosa ha prodotto l'effetto.
 
 ---
 
-## Decisione ancora aperta: noindex sull'app
+## Decisione presa: noindex sull'app (pubblicato il 2026-09-25)
 
-`frontend/index.html` contiene `<meta name="robots" content="noindex">` e
-`frontend/public/robots.txt` è stato aggiornato di conseguenza (commit
-`cf1abce`), ma **non sono mai stati pubblicati**: l'interfaccia in produzione
-è ferma al 2026-02-08.
+`<meta name="robots" content="noindex, nofollow">` è attivo su tutte le rotte
+di `app.spendifyapp.com`. Le risorse JS/CSS live erano identiche alla build
+locale: il deploy ha cambiato solo `index.html` e `robots.txt`.
 
-Repo e produzione divergono. Il rischio concreto è che al prossimo
-`deploy_ui.sh prod`, fatto per tutt'altro motivo, il `noindex` parta in
-silenzio dentro un deploy che parlava d'altro.
+**Le impression dell'app caleranno di circa il 69%.** È corretto (erano
+impression a CTR zero) e non va letto come regressione. Si perde anche
+`/login` (6 impression, 1 clic). `robots.txt` lascia il crawl aperto di
+proposito: Google deve poter leggere il `noindex` per applicarlo.
 
-Va deciso, non lasciato in sospeso:
-
-- **Pubblicarlo** — chi cerca il brand trova la landing invece di una shell
-  vuota. Si perdono però le impression su `/login`, che ha il CTR più alto
-  del sito (16,67%). Essendo una SPA con un solo `index.html`, non è
-  possibile escludere la home dell'app e tenere `/login`.
-- **Annullarlo** — si lascia l'app indicizzabile, eventualmente migliorando
-  titolo e descrizione.
-
-In ogni caso: **quando sarà pubblicato, le impression caleranno di circa il
-69%**. È corretto — erano impression a CTR zero — ma va messo in conto prima,
-altrimenti sembrerà una regressione.
+Da controllare il 10/10: l'app sparisce dal report Pagine e sulle ricerche del
+brand compare la landing.
 
 ---
 
