@@ -29,6 +29,10 @@ Il 2026-09-25 sono cambiate più cose insieme:
   `Convert Receipt Photos to Spreadsheet or CSV`, per allinearlo alla query
   con più domanda. Description e `<h1>` invariati. Sulla rimisurazione, gli
   effetti di home e titolo non sono separabili.
+- **FAQ su `/receipt-to-csv/`** (stesso giorno): 5 domande con `FAQPage`
+  JSON-LD (colonne del CSV, estrazione da rivedere, export selettivo per
+  date, nessuna connessione bancaria, trial 14 giorni senza carta). Ogni
+  affermazione è stata verificata nel codice (`Export.tsx`, `TRIAL_DAYS`).
 
 Modificare ora anche titoli e testi significherebbe muovere due variabili
 insieme e non poter attribuire l'effetto. Prima si lascia assestare, poi si

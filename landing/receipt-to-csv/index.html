@@ -75,6 +75,56 @@
   }
   </script>
 
+  <!-- Structured Data - FAQ Schema -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "What columns does the receipt CSV contain?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Each row is one receipt, with eight columns: Date, Merchant, Total, VAT, VAT Rate, Category, Notes and Receipt ID. You can open the file in Excel or import it into Google Sheets or any other spreadsheet app."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Is the data extracted automatically?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "The date, merchant and amounts are read from the photo automatically, but not always perfectly. You can review each receipt and correct anything that looks wrong before you export."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Can I export only some of my receipts?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. You choose which receipts to include and can filter them by date: the last 7 days, the last 30 days, this month, last month or a custom date range."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does Spendify connect to my bank account?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. Spendify does not connect to banks or financial institutions and does not sync transactions. You upload a receipt, review the data and choose what to export."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Is there a free trial?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. New accounts get a 14-day free trial. No credit card is required to start."
+        }
+      }
+    ]
+  }
+  </script>
+
   <!-- Structured Data - Breadcrumb -->
   <script type="application/ld+json">
   {
@@ -224,6 +274,12 @@
     /* Links */
     .text-link { color: var(--primary); font-weight: 500; }
     .text-link:hover { text-decoration: underline; }
+    /* FAQ */
+    .faq-section { max-width: 48rem; margin: 0 auto; }
+    .faq-item { padding: 1.5rem; border-radius: 1rem; background: var(--card); border: 1px solid var(--border); margin-bottom: 1rem; }
+    .faq-item:last-child { margin-bottom: 0; }
+    .faq-item h3 { font-size: 1.125rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .faq-item p { color: var(--muted-foreground); line-height: 1.6; }
 
     /* Footer */
     .footer { padding: 2rem 1rem; text-align: center; border-top: 1px solid var(--border); }
@@ -351,6 +407,38 @@
           <li><span class="check-icon">✓</span> People who want receipt-to-CSV, not a finance suite</li>
         </ul>
         <p style="text-align:center;color:var(--muted-foreground);font-style:italic;">Not built for replacing full bookkeeping software.</p>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="section section-alt">
+      <div class="container faq-section">
+        <h2 class="section-title">Frequently asked questions</h2>
+
+        <article class="faq-item">
+          <h3>What columns does the receipt CSV contain?</h3>
+          <p>Each row is one receipt, with eight columns: Date, Merchant, Total, VAT, VAT Rate, Category, Notes and Receipt ID. You can open the file in Excel or import it into Google Sheets or any other spreadsheet app.</p>
+        </article>
+
+        <article class="faq-item">
+          <h3>Is the data extracted automatically?</h3>
+          <p>The date, merchant and amounts are read from the photo automatically, but not always perfectly. You can review each receipt and correct anything that looks wrong before you export.</p>
+        </article>
+
+        <article class="faq-item">
+          <h3>Can I export only some of my receipts?</h3>
+          <p>Yes. You choose which receipts to include and can filter them by date: the last 7 days, the last 30 days, this month, last month or a custom date range.</p>
+        </article>
+
+        <article class="faq-item">
+          <h3>Does Spendify connect to my bank account?</h3>
+          <p>No. Spendify does not connect to banks or financial institutions and does not sync transactions. You upload a receipt, review the data and choose what to export.</p>
+        </article>
+
+        <article class="faq-item">
+          <h3>Is there a free trial?</h3>
+          <p>Yes. New accounts get a 14-day free trial. No credit card is required to start.</p>
+        </article>
       </div>
     </section>
 
