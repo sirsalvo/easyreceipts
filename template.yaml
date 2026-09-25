@@ -36,7 +36,7 @@ Parameters:
 
   UiAllowedOrigins:
     Type: String
-    Default: "http://localhost:8088,http://localhost:8080,http://localhost:5173"
+    Default: "http://localhost:8088,http://localhost:8080,http://localhost:5173,https://app.spendifyapp.com"
     Description: "CORS allowed origins. Use '*' to allow all (temporary). Or comma-separated list."
 
   # Stripe redirects (success/cancel/portal return). In PROD set this to the CloudFront UI URL.
@@ -45,9 +45,25 @@ Parameters:
     Default: "http://localhost:8088"
     Description: "Base URL of the app used for Stripe redirect URLs (e.g., https://<cloudfront-domain>). No trailing slash."
 
+  # Custom domain for the UI CloudFront distribution.
+  # IMPORTANT: these were previously configured out-of-band on the prod distribution.
+  # They MUST stay in the template, otherwise a stack update resets the distribution
+  # and drops the alias + certificate, taking the production domain offline.
+  UiAliases:
+    Type: String
+    Default: ""
+    Description: "Comma-separated CNAMEs for the UI distribution (e.g. app.spendifyapp.com). Empty = CloudFront default domain only."
+
+  UiCertificateArn:
+    Type: String
+    Default: ""
+    Description: "ACM certificate ARN in us-east-1 for UiAliases. Required when UiAliases is set."
+
 Conditions:
   HasTestsClientId: !Not [!Equals [!Ref TestsUserPoolClientId, ""]]
   AllowAllOrigins: !Equals [!Ref UiAllowedOrigins, "*"]
+  IsProd: !Equals [!Ref Env, "prod"]
+  HasUiAliases: !Not [!Equals [!Ref UiAliases, ""]]
 
 Globals:
   Function:
@@ -108,6 +124,9 @@ Resources:
     Properties:
       TableName: !Sub "${AppName}-${Env}-receipts"
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      DeletionProtectionEnabled: !If [IsProd, true, false]
       AttributeDefinitions:
         - AttributeName: PK
           AttributeType: S
@@ -137,6 +156,9 @@ Resources:
     Properties:
       TableName: !Sub "${AppName}-${Env}-tags"
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      DeletionProtectionEnabled: !If [IsProd, true, false]
       AttributeDefinitions:
         - AttributeName: PK
           AttributeType: S
@@ -153,6 +175,9 @@ Resources:
     Properties:
       TableName: !Sub "${AppName}-${Env}-usage"
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      DeletionProtectionEnabled: !If [IsProd, true, false]
       AttributeDefinitions:
         - AttributeName: PK
           AttributeType: S
@@ -170,6 +195,9 @@ Resources:
     Properties:
       TableName: !Sub "${AppName}-${Env}-users"
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      DeletionProtectionEnabled: !If [IsProd, true, false]
       AttributeDefinitions:
         - AttributeName: userId
           AttributeType: S
@@ -184,6 +212,9 @@ Resources:
     Type: AWS::DynamoDB::Table
     Properties:
       BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      DeletionProtectionEnabled: !If [IsProd, true, false]
       AttributeDefinitions:
         - AttributeName: PK
           AttributeType: S
@@ -242,6 +273,13 @@ Resources:
         Enabled: true
         HttpVersion: http2
         DefaultRootObject: index.html
+        Aliases: !If [HasUiAliases, !Split [",", !Ref UiAliases], !Ref "AWS::NoValue"]
+        ViewerCertificate: !If
+          - HasUiAliases
+          - AcmCertificateArn: !Ref UiCertificateArn
+            SslSupportMethod: sni-only
+            MinimumProtocolVersion: TLSv1.2_2021
+          - !Ref "AWS::NoValue"
         Origins:
           - Id: UiS3Origin
             DomainName: !GetAtt UiBucket.RegionalDomainName
