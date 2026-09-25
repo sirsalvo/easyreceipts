@@ -1,14 +1,17 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
+# app.spendifyapp.com is the authenticated application, not marketing content.
+#
+# Every route renders client-side behind a login, so a crawler only ever sees
+# an empty SPA shell. We do NOT want this host in the index.
+#
+# Crawling is deliberately still allowed: de-indexing is driven by the
+# <meta name="robots" content="noindex"> in index.html, and Google can only
+# act on that tag if it is allowed to fetch the page. Blocking here instead
+# would leave any already-indexed URL stuck in the index, because the crawler
+# would never see the noindex directive.
+#
+# Public/marketing content lives on https://spendifyapp.com.
 
 User-agent: *
 Allow: /
+
+Sitemap: https://spendifyapp.com/sitemap.xml

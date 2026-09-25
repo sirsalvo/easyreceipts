@@ -51,8 +51,23 @@ if [[ "$ENV" == "prod" ]]; then
   echo
 fi
 
-# Sync
-aws s3 sync landing/ "s3://${LANDING_BUCKET}" --delete
+# Sync.
+#
+# Cache-Control was previously never set, so every object was uploaded with no
+# caching metadata at all. Files under assets/ carry a content hash in their
+# name, so they can safely be cached forever; HTML must not be, or visitors
+# keep seeing an old page after a deploy.
+
+echo "⬆️  Uploading hashed assets (immutable, long cache)"
+aws s3 sync landing/ "s3://${LANDING_BUCKET}" \
+  --exclude "*" --include "assets/*" \
+  --cache-control "public, max-age=31536000, immutable"
+
+echo "⬆️  Uploading pages and everything else (revalidate)"
+aws s3 sync landing/ "s3://${LANDING_BUCKET}" \
+  --exclude "assets/*" \
+  --cache-control "public, max-age=0, must-revalidate" \
+  --delete
 
 # Invalidate CloudFront
 aws cloudfront create-invalidation \

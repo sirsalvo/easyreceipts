@@ -4,6 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Spendify</title>
+    <!--
+      Keep the application out of search results.
+
+      Every route is behind authentication and rendered client-side, so a
+      crawler only ever sees this empty shell. Indexing it wastes crawl budget
+      and risks ranking a blank page for brand queries instead of the landing
+      site at https://spendifyapp.com.
+
+      CloudFront rewrites 403/404 to /index.html, so this tag covers every
+      route of the SPA. robots.txt intentionally still allows crawling, since
+      Google must be able to fetch the page to honour this directive.
+    -->
+    <meta name="robots" content="noindex, nofollow" />
     <meta name="description" content="App for managing and tracking receipts" />
     <meta name="author" content="Lovable" />
 
