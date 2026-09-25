@@ -1,1 +1,22 @@
-stripe
+# Fully pinned to the dependency set currently running in production
+# (extracted from the deployed easyreceipts-prod-api package on 2026-09-25).
+#
+# Rationale: this file previously contained only "stripe", unpinned. Every
+# rebuild therefore resolved to whatever was latest on PyPI at that moment and
+# silently shipped it to production - a rebuild in Sep 2026 resolved stripe to
+# 15.6.1, a major version jump from the 14.3.0 actually running. Payment SDK
+# upgrades must be deliberate and tested, never a side effect of an unrelated
+# infrastructure deploy.
+#
+# To upgrade: bump here in a dedicated change, then verify checkout, customer
+# portal and webhook signature verification before deploying to prod.
+
+stripe==14.3.0
+
+# Transitive dependencies of stripe, pinned for reproducible builds.
+certifi==2026.1.4
+charset-normalizer==3.4.4
+idna==3.11
+requests==2.32.5
+typing_extensions==4.15.0
+urllib3==2.6.3
