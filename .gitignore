@@ -27,3 +27,7 @@ frontend/dist/
 
 # Local landing backups (snapshots taken before Lovable republishes)
 landing_backup_*/
+
+# Python
+__pycache__/
+*.pyc
