@@ -24,3 +24,6 @@ yarn-error.log*
 # Frontend build output (Lovable/Vite)
 frontend/dist/
 *.swp
+
+# Local landing backups (snapshots taken before Lovable republishes)
+landing_backup_*/
