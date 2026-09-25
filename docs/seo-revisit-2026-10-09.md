@@ -24,6 +24,11 @@ Il 2026-09-25 sono cambiate più cose insieme:
   da 1 carattere di testo e nessun `<h1>` a 2356 caratteri e un `<h1>`;
   rimosso anche l'`aggregateRating` inventato dal JSON-LD. Verificato con
   "Testa URL live" in Search Console. Indicizzazione richiesta.
+- **Titolo di `/receipt-to-csv/`** (deciso il 2026-09-25, dopo la home):
+  da `Receipt to CSV – Convert Receipt Photos to Excel or Google Sheets` a
+  `Convert Receipt Photos to Spreadsheet or CSV`, per allinearlo alla query
+  con più domanda. Description e `<h1>` invariati. Sulla rimisurazione, gli
+  effetti di home e titolo non sono separabili.
 
 Modificare ora anche titoli e testi significherebbe muovere due variabili
 insieme e non poter attribuire l'effetto. Prima si lascia assestare, poi si
