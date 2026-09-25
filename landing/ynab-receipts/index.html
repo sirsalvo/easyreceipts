@@ -12,7 +12,6 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <meta name="title" content="How to Enter Receipts in YNAB | Spendify" />
   <meta name="description" content="Learn how to enter cash receipts in YNAB without manual typing every time. Practical guide for handling paper receipts with less friction." />
-  <meta name="keywords" content="YNAB receipts, YNAB cash receipts, YNAB receipt import, YNAB CSV import receipts, enter receipts YNAB" />
   <meta name="author" content="Spendify" />
   <meta name="robots" content="index, follow" />
   
@@ -23,15 +22,17 @@
   <meta property="og:url" content="https://spendifyapp.com/ynab-receipts/" />
   <meta property="og:title" content="How to Enter Receipts in YNAB | Spendify" />
   <meta property="og:description" content="Learn how to enter cash receipts in YNAB without manual typing every time. Practical guide for handling paper receipts with less friction." />
-  <meta property="og:image" content="https://spendifyapp.com/spendify-icon.png" />
+  <meta property="og:image" content="https://spendifyapp.com/og-ynab-receipts.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
   <meta property="og:site_name" content="Spendify" />
   
   <!-- Twitter -->
-  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:url" content="https://spendifyapp.com/ynab-receipts/" />
   <meta name="twitter:title" content="How to Enter Receipts in YNAB | Spendify" />
   <meta name="twitter:description" content="Learn how to enter cash receipts in YNAB without manual typing every time." />
-  <meta name="twitter:image" content="https://spendifyapp.com/spendify-icon.png" />
+  <meta name="twitter:image" content="https://spendifyapp.com/og-ynab-receipts.png" />
   
   <!-- Canonical URL -->
   <link rel="canonical" href="https://spendifyapp.com/ynab-receipts/" />
@@ -181,6 +182,17 @@
     a {
       color: inherit;
       text-decoration: none;
+    }
+
+    /* Inline links inside body copy. Matches .text-link on /receipt-to-csv/
+       so the two content pages stay visually consistent. */
+    .text-link {
+      color: var(--primary);
+      font-weight: 500;
+    }
+
+    .text-link:hover {
+      text-decoration: underline;
     }
     
     img {
@@ -1026,7 +1038,7 @@
         
         <article class="faq-item">
           <h3>Can I export to CSV?</h3>
-          <p>Yes. If you prefer not to use the YNAB integration, you can export your receipts as CSV and import them manually.</p>
+          <p>Yes. If you prefer not to use the YNAB integration, you can export your receipts as CSV and import them manually. See <a href="/receipt-to-csv/" class="text-link">how receipt photos become a spreadsheet</a> for the Excel and Google Sheets workflow.</p>
         </article>
       </div>
     </section>
@@ -1043,9 +1055,9 @@
         <nav class="footer-links">
           <a href="/#features">Features</a>
           <a href="/#privacy">Privacy</a>
-          <a href="/#ynab">YNAB</a>
+          <a href="/receipt-to-csv/">Receipt to CSV</a>
         </nav>
-        <p class="footer-copy">© 2025 Spendify. All rights reserved.</p>
+        <p class="footer-copy">© 2026 Spendify. All rights reserved.</p>
       </div>
     </div>
   </footer>

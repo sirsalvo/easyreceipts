@@ -12,7 +12,6 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <meta name="title" content="Receipt to CSV – Convert Receipt Photos to Excel or Google Sheets" />
   <meta name="description" content="Convert receipt photos into clean CSV files for Excel or Google Sheets. Review the extracted data and export spreadsheet-ready expenses in seconds." />
-  <meta name="keywords" content="receipt to csv, receipt to excel, receipt to google sheets, scan receipt to spreadsheet, convert receipt to csv, receipt scanner csv" />
   <meta name="author" content="Spendify" />
   <meta name="robots" content="index, follow" />
 
@@ -23,15 +22,17 @@
   <meta property="og:url" content="https://spendifyapp.com/receipt-to-csv/" />
   <meta property="og:title" content="Receipt to CSV – Convert Receipt Photos to Excel or Google Sheets" />
   <meta property="og:description" content="Convert receipt photos into clean CSV files for Excel or Google Sheets. Review the extracted data and export spreadsheet-ready expenses in seconds." />
-  <meta property="og:image" content="https://spendifyapp.com/spendify-icon.png" />
+  <meta property="og:image" content="https://spendifyapp.com/og-receipt-to-csv.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
   <meta property="og:site_name" content="Spendify" />
 
   <!-- Twitter -->
-  <meta name="twitter:card" content="summary" />
+  <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:url" content="https://spendifyapp.com/receipt-to-csv/" />
   <meta name="twitter:title" content="Receipt to CSV – Convert Receipt Photos to Excel or Google Sheets" />
   <meta name="twitter:description" content="Convert receipt photos into clean CSV files for Excel or Google Sheets. Review the extracted data and export spreadsheet-ready expenses in seconds." />
-  <meta name="twitter:image" content="https://spendifyapp.com/spendify-icon.png" />
+  <meta name="twitter:image" content="https://spendifyapp.com/og-receipt-to-csv.png" />
 
   <!-- Canonical URL -->
   <link rel="canonical" href="https://spendifyapp.com/receipt-to-csv/" />
@@ -372,7 +373,10 @@
   </main>
 
   <footer class="footer">
-    <p>&copy; 2026 Spendify. <a href="/">Home</a> · <a href="/ynab-receipts">YNAB Receipts</a></p>
+      <!-- Trailing slash matters: /ynab-receipts is 301'd to /ynab-receipts/
+           by the CloudFront router, so linking without it wastes a hop on
+           every internal click and crawl. -->
+      <p>&copy; 2026 Spendify. <a href="/">Home</a> · <a href="/ynab-receipts/">YNAB Receipts</a></p>
   </footer>
 </body>
 </html>
