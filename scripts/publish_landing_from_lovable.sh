@@ -76,6 +76,18 @@ echo
 KEEP_FILES=(
   "privacy.html"
   "terms.html"
+  # The Lovable build ships its own favicon.ico (the orange/blue heart), and
+  # that file is what Google was actually displaying next to our result in
+  # the SERP: Google falls back to /favicon.ico whenever the declared icon is
+  # unusable, and ours was 694x677 - not square - so it was rejected. These
+  # are the Spendify icons; excluding them keeps the build from overwriting
+  # them on the next publish.
+  "favicon.ico"
+  "favicon-96.png"
+  "favicon-192.png"
+  "favicon-512.png"
+  "apple-touch-icon.png"
+  "spendify-icon.png"
 )
 
 RSYNC_EXCLUDES=()
