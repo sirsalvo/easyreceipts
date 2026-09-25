@@ -20,6 +20,10 @@ Il 2026-09-25 sono cambiate più cose insieme:
 - `www` → 301 verso il dominio apex
 - favicon corretto (prima Google mostrava il logo Lovable)
 - `Cache-Control` impostato su tutti gli oggetti
+- **Homepage prerenderizzata** (aggiunta sempre il 2026-09-25, in serata):
+  da 1 carattere di testo e nessun `<h1>` a 2356 caratteri e un `<h1>`;
+  rimosso anche l'`aggregateRating` inventato dal JSON-LD. Verificato con
+  "Testa URL live" in Search Console. Indicizzazione richiesta.
 
 Modificare ora anche titoli e testi significherebbe muovere due variabili
 insieme e non poter attribuire l'effetto. Prima si lascia assestare, poi si

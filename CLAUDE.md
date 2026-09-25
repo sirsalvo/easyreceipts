@@ -292,9 +292,14 @@ versione italiana è stata rimandata, nonostante fosse la richiesta iniziale.
 Se esistono ragioni di mercato che i dati non catturano, è una scommessa
 legittima — ma oggi non è ciò che i numeri suggeriscono.
 
-**La homepage serve 1 carattere di testo indicizzabile e nessun `<h1>`**: è
-una shell SPA di Lovable. È il limite strutturale più grosso e non è stato
-affrontato: richiede prerendering o una homepage statica.
+**Homepage prerenderizzata (2026-09-25).** Era una shell SPA vuota (1 carattere,
+nessun `<h1>`). `scripts/prerender_landing.mjs` (Playwright, da
+`e2e/node_modules`) inserisce l'HTML renderizzato in `dist/index.html` durante
+`publish_landing_from_lovable.sh`, e a ogni build rimette le icone quadrate e
+toglie l'`aggregateRating` inventato. `KEEP_FILES` ora protegge anche
+`receipt-to-csv/index.html`, `ynab-receipts/index.html`, le og image e
+`sitemap.xml`: vengono da `public/` di Lovable e il sync le avrebbe riportate
+alla versione senza le correzioni SEO.
 
 ### Decisioni aperte
 
