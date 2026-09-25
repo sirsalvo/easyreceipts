@@ -67,6 +67,15 @@ echo "✅ Build done."
 echo
 
 # -------------------------
+# 2b) Prerender the homepage
+# -------------------------
+# The build ships an empty <div id="root">: 1 character of indexable text and
+# no <h1>. Bake the rendered markup in so crawlers see the content.
+echo "🖨️  Prerendering homepage"
+node "${EASYRECEIPTS_DIR}/scripts/prerender_landing.mjs" "${SRC_DIR}/dist"
+echo
+
+# -------------------------
 # 3) Sync dist -> easyreceipts/landing
 # -------------------------
 # Pages NOT produced by the Lovable build that must survive the sync.
@@ -88,6 +97,15 @@ KEEP_FILES=(
   "favicon-512.png"
   "apple-touch-icon.png"
   "spendify-icon.png"
+  # The two content pages come from Lovable's public/ folder, but the copies
+  # in landing/ carry SEO fixes (favicon, cross-links, social previews) that
+  # do not exist upstream. Without these, the sync reverts them.
+  "receipt-to-csv/index.html"
+  "ynab-receipts/index.html"
+  "og-receipt-to-csv.png"
+  "og-ynab-receipts.png"
+  # Upstream lastmod dates are stale (2026-02-11); the repo copy is maintained.
+  "sitemap.xml"
 )
 
 RSYNC_EXCLUDES=()
