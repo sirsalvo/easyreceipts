@@ -50,7 +50,7 @@
     <div class="wrap">
       <div class="card">
         <h1>Privacy Policy</h1>
-        <p class="muted"><strong>Last updated:</strong> 2026-01-24</p>
+        <p class="muted"><strong>Last updated:</strong> 2026-09-26</p>
 
         <p>
           This Privacy Policy explains how Spendify (“we”, “us”) collects, uses, and protects information when you use
@@ -67,7 +67,7 @@
         <ul>
           <li><strong>Account information</strong> (e.g., email address) when you create an account.</li>
           <li><strong>Receipts and extracted data</strong> that you upload (images/PDFs) and the metadata derived from them (merchant, date, amount).</li>
-          <li><strong>Configuration data</strong> you provide (e.g., YNAB token/budget/account IDs, if you use YNAB export).</li>
+          <li><strong>YNAB connection data</strong>, if you connect YNAB: the encrypted access credentials issued by YNAB through OAuth, and the identifiers and names of the plan and account you choose. See section 6.</li>
           <li><strong>Usage and technical data</strong> (e.g., log events, device/browser information, IP address) to operate and secure the Service.</li>
           <li><strong>Billing data</strong> handled by our payment processor (Stripe). We do not store full card details.</li>
         </ul>
@@ -94,20 +94,39 @@
         <ul>
           <li><strong>Infrastructure providers</strong> (e.g., AWS) to host and process your uploaded receipts and data.</li>
           <li><strong>Payment processing</strong> (Stripe) for subscriptions and billing.</li>
-          <li><strong>YNAB</strong> when you export transactions using your YNAB credentials and their API.</li>
+          <li><strong>YNAB</strong> when you export transactions, using the access you authorised through OAuth and YNAB’s API. See section 6.</li>
           <li><strong>Service providers</strong> for email forwarding/support tools (if used).</li>
           <li><strong>Legal</strong> if required by law or to protect rights and safety.</li>
         </ul>
 
         <h2>6. YNAB integration</h2>
-        <p>
-          If you use YNAB export, Spendify sends transaction data to YNAB through YNAB’s API, using the token you provide.
-          Categories are not assigned by Spendify; you remain in control inside YNAB.
-        </p>
+        <p>This section explains how data obtained through the YNAB API is handled. It applies only if you choose to connect YNAB.</p>
+
+        <p><strong>What we access.</strong></p>
+        <ul>
+          <li>When you choose “Connect YNAB” you sign in on YNAB’s own site and authorise Spendify (OAuth). Spendify never sees your YNAB password.</li>
+          <li>YNAB gives us an access token and a refresh token. We use them only to read the names of your YNAB plans and accounts, so you can choose where receipts go, and to create the transactions you select. We do not read your existing transactions, categories, balances or budget amounts.</li>
+          <li>We store the tokens (encrypted) and the identifiers and names of the plan and account you chose.</li>
+        </ul>
+
+        <p><strong>What we send to YNAB.</strong> For each receipt you export: the date, the amount, the merchant name, the memo “Export Spendify” and the receipt identifier (used so that the same receipt is never created twice). Spendify does not assign or send categories.</p>
+
+        <p><strong>Why we use it.</strong> Only to connect your account, let you choose a plan and account, and create the transactions you ask for. We do not use it for advertising, profiling, analytics or training models, and we do not sell it.</p>
+
+        <p><strong>How it is stored and protected.</strong> Tokens are encrypted with a dedicated AWS Key Management Service key, tied to your account, and stored on Amazon Web Services in the EU (Frankfurt) region. Data travels over HTTPS. All calls to YNAB are made from our servers; your tokens are never sent to your browser. Access is limited to the systems that need it.</p>
+
+        <p><strong>Third parties.</strong> We do not pass data obtained through the YNAB API to any third party. Our infrastructure provider (AWS) processes it on our behalf, only to run the Service. Our payment processor (Stripe) never receives it.</p>
+
+        <p><strong>How long we keep it.</strong> Until you disconnect YNAB, delete your account, or revoke Spendify’s access in YNAB (when YNAB tells us the access is no longer valid, we delete our copy). Disconnecting deletes the stored tokens and the plan and account details immediately. Encrypted backups of our database may retain earlier copies for up to 35 days, after which they are permanently removed. Transactions already created in YNAB belong to your YNAB account and are not affected; you manage them in YNAB.</p>
+
+        <p><strong>Deleting your data.</strong> You can disconnect YNAB at any time in Settings inside the app. You can also ask us to delete your YNAB data, or your whole account, by writing to <a href="mailto:privacy@spendifyapp.com">privacy@spendifyapp.com</a>; we will do it within 30 days. You can revoke Spendify’s access at any time from your YNAB account settings.</p>
+
+        <p><strong>Changes.</strong> If we ever change how data obtained through the YNAB API is used, we will update this policy and ask for your consent again before applying the change to your YNAB data.</p>
 
         <h2>7. Data retention</h2>
         <p>
           We retain your data as long as your account is active or as needed to provide the Service.
+          Data obtained through the YNAB API follows the specific rules in section 6.
           You may request deletion of your receipts and account by contacting
           <a href="mailto:support@spendifyapp.com">support@spendifyapp.com</a>.
           We may retain certain records where required by law (e.g., billing/accounting).
@@ -152,6 +171,7 @@
 
   <footer>
     <div class="wrap">
+      <p class="muted" style="font-size:12px;margin:0 0 12px">We are not affiliated, associated, or in any way officially connected with YNAB or any of its subsidiaries or affiliates. The official YNAB website can be found at <a href="https://www.ynab.com" target="_blank" rel="noopener noreferrer">https://www.ynab.com</a>. The names YNAB and You Need A Budget, as well as related names, tradenames, marks, trademarks, emblems, and images are registered trademarks of YNAB.</p>
       <div class="foot">
         <div class="muted">© Spendify</div>
         <div style="display:flex;gap:14px;flex-wrap:wrap">
