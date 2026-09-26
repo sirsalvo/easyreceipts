@@ -251,7 +251,7 @@ proprietario) finché non arriva l'approvazione.
 
 **Da fare:** provare la connessione su `app.spendifyapp.com`; inviare la
 risposta a YNAB (`docs/ynab-review-reply.md`, dopo il controllo elencato nel
-file); decidere sul badge "Works with YNAB" della home; PDF e gestione errori
+file); PDF e gestione errori
 OCR (lavoro a parte). Chi esportava su YNAB col token dovrà riconnettersi una
 volta.
 
@@ -266,8 +266,11 @@ modifiche che toccano backend, UI e landing insieme.
 - Regole di YNAB per il brand: "YNAB" nel nome dell'app o nel DNS solo se
   preceduto da "for" (`Receipt Scanner for YNAB`), e il disclaimer "We are not
   affiliated…" va sul sito.
-- **Decisione aperta:** la home usa il badge ufficiale "Works with YNAB" prima
-  dell'approvazione. Conviene toglierlo finché non arriva.
+- **Badge "Works with YNAB" sulla home: si tiene (decisione di Salvo, 2026-09-26)**
+  perché dà visibilità. Rischio noto e piccolo: prima dell'approvazione può
+  sembrare un'approvazione già data. I requisiti di YNAB parlano di badge
+  *linked*, ma il nostro è solo un'immagine: renderlo un link a ynab.com lo
+  renderebbe conforme (da fare nel repo Lovable della landing).
 - Il clone Lovable dell'app non aveva il `noindex` pubblicato il 2026-09-25 (era
   solo nel monorepo): ora è nel commit del clone, altrimenti il sync lo avrebbe
   cancellato.
