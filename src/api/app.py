@@ -84,6 +84,9 @@ UI_ORIGIN = os.getenv("UI_ORIGIN", "").strip()  # optional: force allow-origin
 
 DEFAULT_HEADERS = {"content-type": "application/json"}
 
+ALLOWED_UPLOAD_TYPES = ("image/jpeg", "image/png")
+
+
 def _get_me(event: Dict[str, Any], origin: str) -> Dict[str, Any]:
     from entitlements import get_or_create_user
 
@@ -590,6 +593,14 @@ def _create_receipt(event: Dict[str, Any], origin: str) -> Dict[str, Any]:
 
     payload = _read_json(event)
     content_type = (payload.get("contentType") or payload.get("content_type") or "image/jpeg").strip() or "image/jpeg"
+    # The presigned URL is signed for exactly this Content-Type, and Textract
+    # is only fed formats it was verified to read (JPEG, PNG).
+    if content_type not in ALLOWED_UPLOAD_TYPES:
+        return _json(
+            400,
+            {"error": "unsupported_content_type", "message": "Upload a JPG or PNG image."},
+            origin,
+        )
 
     receipt_id = str(uuid.uuid4())
     created_at = _now_iso()
