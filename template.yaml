@@ -205,6 +205,31 @@ Resources:
         - AttributeName: userId
           KeyType: HASH
 
+  # Encrypts the YNAB OAuth tokens stored on the users' rows. Retain on delete
+  # and replace: losing the key would make every stored token unreadable.
+  YnabTokenKey:
+    Type: AWS::KMS::Key
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Description: !Sub "${AppName}-${Env} YNAB OAuth token encryption"
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: EnableIamPolicies
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: "kms:*"
+            Resource: "*"
+
+  YnabTokenKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub "alias/${AppName}-${Env}-ynab-tokens"
+      TargetKeyId: !Ref YnabTokenKey
+
   # ---------------------------
   # UI bucket + CloudFront distribution
   # ---------------------------
@@ -361,6 +386,11 @@ Resources:
           STRIPE_PRICE_ID_PARAM: !Sub "/spendify/${Env}/stripe/price_id"
           STRIPE_WEBHOOK_SECRET_PARAM: !Sub "/spendify/${Env}/stripe/webhook_secret"
 
+          # YNAB OAuth (client id/secret live in SSM; tokens are encrypted with this key)
+          YNAB_CLIENT_ID_PARAM: !Sub "/spendify/${Env}/ynab/client_id"
+          YNAB_CLIENT_SECRET_PARAM: !Sub "/spendify/${Env}/ynab/client_secret"
+          YNAB_KMS_KEY_ID: !GetAtt YnabTokenKey.Arn
+
 
 
           # Used by the backend to craft Stripe redirect URLs
@@ -386,6 +416,13 @@ Resources:
               - ssm:GetParameters
             Resource:
               - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/spendify/${Env}/stripe/*"
+              - !Sub "arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/spendify/${Env}/ynab/*"
+        - Statement:
+            Effect: Allow
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+            Resource: !GetAtt YnabTokenKey.Arn
         - Statement:
             Effect: Allow
             Action:

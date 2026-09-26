@@ -110,6 +110,40 @@ def _get_me(event: Dict[str, Any], origin: str) -> Dict[str, Any]:
     )
 
 
+def _ynab_route(event: Dict[str, Any], origin: str, path: str, method: str) -> Dict[str, Any]:
+    import ynab
+
+    sub = _user_sub(event)
+    if not sub:
+        return _json(401, {"message": "Unauthorized"}, origin)
+
+    try:
+        if path == "/ynab/status" and method == "GET":
+            return _json(200, ynab.status(sub), origin)
+        if path == "/ynab/oauth/start" and method == "POST":
+            return _json(200, ynab.start_authorization(sub), origin)
+        if path == "/ynab/oauth/callback" and method == "POST":
+            body = _read_json(event)
+            return _json(200, ynab.complete_authorization(sub, str(body.get("code") or ""), str(body.get("state") or "")), origin)
+        if path == "/ynab/plans" and method == "GET":
+            return _json(200, {"plans": ynab.list_plans(sub)}, origin)
+        if path == "/ynab/accounts" and method == "GET":
+            plan_id = (event.get("queryStringParameters") or {}).get("planId") or ""
+            return _json(200, {"accounts": ynab.list_accounts(sub, plan_id)}, origin)
+        if path == "/ynab/settings" and method == "PUT":
+            body = _read_json(event)
+            return _json(200, ynab.save_settings(sub, body.get("planId"), body.get("accountId")), origin)
+        if path == "/ynab/export" and method == "POST":
+            body = _read_json(event)
+            return _json(200, ynab.export_receipts(sub, body.get("receiptIds") or []), origin)
+        if path == "/ynab/connection" and method == "DELETE":
+            return _json(200, ynab.disconnect(sub), origin)
+    except ynab.YnabError as e:
+        return _json(e.status, {"error": e.code, "message": e.message}, origin)
+
+    return _json(404, {"message": "Not found"}, origin)
+
+
 def _now_iso() -> str:
     return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat()
 
@@ -1192,6 +1226,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         if path == "/me" and method == "GET":
             return _get_me(event, origin)
+
+        if path.startswith("/ynab/"):
+            return _ynab_route(event, origin, path, method)
 
         if path == "/categories" and method == "GET":
             sub = _user_sub(event)
