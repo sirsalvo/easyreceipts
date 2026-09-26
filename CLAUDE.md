@@ -240,6 +240,11 @@ rispondere al thread per "scongelare" la richiesta *API OAuth Community App*.
   Textract, il PDF a pagina singola passa, quello multipagina no (serve l'API
   asincrona, uno stato FAILED e un'anteprima). Da fare a parte.
 
+**Stato prod (2026-09-26): il backend è già deployato** dal branch (chiave KMS
+`YnabTokenKey` creata, rotte `/ynab/*` attive; `main` non lo contiene ancora, quindi
+repo e prod divergono finché non si fa il merge). Interfaccia e landing di prod
+sono ancora quelle vecchie. Mancano in SSM prod `client_id` e `client_secret`.
+
 **Manca per andare live:** creare le app OAuth in YNAB (dev e prod) e mettere
 `/spendify/{env}/ynab/client_id` (String) e `client_secret` (SecureString) in
 SSM; test end-to-end su dev con un account YNAB vero; poi il rilascio.
