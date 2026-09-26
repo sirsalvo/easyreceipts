@@ -1,6 +1,6 @@
 # Spendify (repo: easyreceipts) — contesto di progetto
 
-Documento di handoff. Ultimo aggiornamento: **2026-09-25**.
+Documento di handoff. Ultimo aggiornamento: **2026-09-26**.
 
 Il progetto è **live e con utenti reali e pagamenti veri**. Ogni modifica a
 `prod` tocca dati di produzione. Leggi la sezione "Trappole note" prima di
@@ -213,6 +213,57 @@ link reciproci, home prerenderizzata, titolo e FAQ di `/receipt-to-csv/`,
 a quelle live (verificato prima del deploy), quindi il deploy della UI ha
 cambiato solo `index.html` e `robots.txt`. **Il backend non è stato toccato**
 e resta quello del 2026-09.
+
+### YNAB: OAuth in corso (branch `feat/ynab-oauth`, NON in produzione)
+
+YNAB ha rifiutato l'app per la lista "Works with YNAB" (thread del 2026-02-23/25
+con help@ynab.com): chiedeva il **Personal Access Token** dell'utente, vietato
+dai loro Termini. Chiedono anche una Privacy Policy conforme. Dela ha detto di
+rispondere al thread per "scongelare" la richiesta *API OAuth Community App*.
+
+**Fatto (in locale, testato offline; dev deployato senza credenziali):**
+- `src/api/ynab.py` + rotte `/ynab/*` in `app.py`: OAuth authorization code +
+  PKCE + `state` monouso, token cifrati con KMS (`YnabTokenKey`, legata a
+  `userId`), refresh con protezione dalle race, export lato server con
+  `import_id = receiptId` (un retry non duplica). `test/test_ynab.py` (20 test).
+- Frontend (nel **clone Lovable** `~/lovable-sources/lovable-frontend`,
+  commit locali, non pushati): `YnabSettings.tsx`, `YnabCallback.tsx`
+  (`/ynab/callback`), `lib/ynab.ts` riscritto, Export/Confirmation/Settings
+  aggiornati, pulizia del token vecchio da `localStorage`.
+- Privacy Policy riscritta (sez. 6), disclaimer "not affiliated" nei footer,
+  testi del flusso aggiornati. Home: commit locale nel repo landing
+  (`~/spendify-landing-source/...`), non pushato.
+- `scripts/delete_user_data.py`: cancellazione utente (dry run di default).
+  La policy promette la cancellazione **entro 30 giorni**: va rispettata.
+- Upload: `POST /receipts` firma per il `contentType` dichiarato e accetta solo
+  JPEG/PNG (prima ogni PNG dava 403). **PDF non supportato**: misurato con
+  Textract, il PDF a pagina singola passa, quello multipagina no (serve l'API
+  asincrona, uno stato FAILED e un'anteprima). Da fare a parte.
+
+**Manca per andare live:** creare le app OAuth in YNAB (dev e prod) e mettere
+`/spendify/{env}/ynab/client_id` (String) e `client_secret` (SecureString) in
+SSM; test end-to-end su dev con un account YNAB vero; poi il rilascio.
+
+**Ordine di rilascio (prod):** 1) `deploy_backend.sh prod` con changeset (crea
+la chiave KMS, `Retain`); 2) push del repo Lovable dell'app e
+`sync_frontend_from_lovable.sh`, poi `deploy_ui.sh prod`; 3)
+`publish_landing_from_lovable.sh prod` (rebase del commit locale della landing);
+4) merge di `feat/ynab-oauth` in `main`; 5) rispondere a YNAB. **Non deployare
+la landing da questo branch prima del passo 1-2**: descrive un flusso che in
+produzione ancora non c'è.
+
+**Trappole scoperte:**
+- `apiRequest` (frontend) tratta **ogni 401/403 come sessione scaduta** e
+  slogga l'utente. Gli errori YNAB devono quindi usare altri codici: la
+  riconnessione richiesta risponde **409**, mai 401.
+- Regole di YNAB per il brand: "YNAB" nel nome dell'app o nel DNS solo se
+  preceduto da "for" (`Receipt Scanner for YNAB`), e il disclaimer "We are not
+  affiliated…" va sul sito.
+- **Decisione aperta:** la home usa il badge ufficiale "Works with YNAB" prima
+  dell'approvazione. Conviene toglierlo finché non arriva.
+- Il clone Lovable dell'app non aveva il `noindex` pubblicato il 2026-09-25 (era
+  solo nel monorepo): ora è nel commit del clone, altrimenti il sync lo avrebbe
+  cancellato.
 
 ---
 
