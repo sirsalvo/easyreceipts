@@ -24,10 +24,10 @@ const Upload = () => {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (!file.type.startsWith('image/')) {
+      if (!['image/jpeg', 'image/png'].includes(file.type)) {
         toast({
-          title: 'Invalid file',
-          description: 'Please select an image file',
+          title: 'Unsupported file',
+          description: 'Please select a JPG or PNG photo. PDF files are not supported yet.',
           variant: 'destructive',
         });
         return;
@@ -56,7 +56,7 @@ const Upload = () => {
 
     try {
       // Create receipt and get presigned URL
-      const { receiptId, uploadUrl } = await createReceipt();
+      const { receiptId, uploadUrl } = await createReceipt(selectedFile.type);
 
       // Upload to presigned URL
       await uploadToPresignedUrl(uploadUrl, selectedFile);
@@ -111,7 +111,7 @@ const Upload = () => {
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/jpeg,image/png"
           onChange={handleFileSelect}
           className="hidden"
         />

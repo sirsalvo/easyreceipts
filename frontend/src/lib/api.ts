@@ -258,8 +258,10 @@ const normalizeReceipt = (receipt: Record<string, unknown>): Receipt => {
   } as Receipt;
 };
 
-export const createReceipt = async (): Promise<CreateReceiptResponse> => {
-  return apiRequest<CreateReceiptResponse>('/receipts', { method: 'POST' });
+// The presigned upload URL is signed for this exact Content-Type, so it must
+// match the type the file is uploaded with.
+export const createReceipt = async (contentType: string): Promise<CreateReceiptResponse> => {
+  return apiRequest<CreateReceiptResponse>('/receipts', { method: 'POST', body: { contentType } });
 };
 
 export interface GetReceiptsOptions {

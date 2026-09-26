@@ -8,12 +8,11 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from '@/hooks/use-toast';
-import { getReceipts, Receipt, updateReceipt } from '@/lib/api';
+import { getReceipts, Receipt } from '@/lib/api';
 import { isAuthenticated } from '@/lib/auth';
 import { useUserStatus } from '@/hooks/useUserStatus';
 import { cn, formatCurrency } from '@/lib/utils';
-import { getYNABConfig, exportToYNAB } from '@/lib/ynab';
-import { markAsExportedToYNAB } from '@/lib/ynabExportStore';
+import { getYnabStatus, exportToYnab, isYnabReady, summarizeYnabExport, ynabErrorMessage } from '@/lib/ynab';
 import { 
   ArrowLeft, 
   Download, 
@@ -302,50 +301,45 @@ const Export = () => {
       return;
     }
 
-    const config = getYNABConfig();
-    
-    if (!config.token) {
-      toast({
-        title: 'Missing YNAB token',
-        description: 'Configure your YNAB token in Settings',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!config.accountId) {
-      toast({
-        title: 'Missing Account ID',
-        description: 'Configure your YNAB Account ID in Settings',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     setExporting(true);
 
     try {
-      const result = await exportToYNAB(selectedReceipts, config);
-      
-      // Mark receipts as exported to YNAB (save to backend)
-      const exportedAt = new Date().toISOString();
-      await Promise.all(
-        selectedReceipts.map((r) =>
-          updateReceipt(r.receiptId, { ynabExportedAt: exportedAt })
-        )
+      const current = await getYnabStatus();
+      if (!current.connected) {
+        toast({
+          title: 'YNAB is not connected',
+          description: 'Connect YNAB in Settings',
+          variant: 'destructive',
+        });
+        return;
+      }
+      if (!isYnabReady(current)) {
+        toast({
+          title: 'Choose a YNAB account',
+          description: 'Select the plan and account for your receipts in Settings',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const result = await exportToYnab(selectedReceipts.map((r) => r.receiptId));
+
+      const exported = new Set(result.exportedIds);
+      setReceipts((prev) =>
+        prev.map((r) => (exported.has(r.receiptId) ? { ...r, ynabExportedAt: result.exportedAt } : r))
       );
-      
-      // Also update local storage for immediate UI feedback
-      markAsExportedToYNAB(selectedReceipts.map((r) => r.receiptId));
-      
+      setSelectedIds((prev) => new Set(Array.from(prev).filter((id) => !exported.has(id))));
+
+      const problems = result.failed.length > 0;
       toast({
-        title: 'YNAB export complete',
-        description: `${result.count} transaction(s) created in YNAB`,
+        title: problems ? 'YNAB export partly failed' : 'YNAB export complete',
+        description: summarizeYnabExport(result),
+        variant: problems ? 'destructive' : 'default',
       });
     } catch (error) {
       toast({
         title: 'YNAB export failed',
-        description: error instanceof Error ? error.message : 'An error occurred',
+        description: ynabErrorMessage(error),
         variant: 'destructive',
       });
     } finally {

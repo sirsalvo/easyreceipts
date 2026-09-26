@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { isAuthenticated } from "@/lib/auth";
+import { clearLegacyYnabStorage } from "@/lib/ynab";
 import UserStatusInitializer from "@/components/UserStatusInitializer";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -15,9 +16,12 @@ import Review from "./pages/Review";
 import Confirmation from "./pages/Confirmation";
 import Receipts from "./pages/Receipts";
 import Export from "./pages/Export";
+import YnabCallback from "./pages/YnabCallback";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
+
+clearLegacyYnabStorage();
 
 // Protected route wrapper
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -45,6 +49,7 @@ const App = () => (
           <Route path="/confirmation/:receiptId" element={<ProtectedRoute><Confirmation /></ProtectedRoute>} />
           <Route path="/receipts" element={<ProtectedRoute><Receipts /></ProtectedRoute>} />
           <Route path="/export" element={<ProtectedRoute><Export /></ProtectedRoute>} />
+          <Route path="/ynab/callback" element={<ProtectedRoute><YnabCallback /></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

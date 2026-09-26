@@ -3,9 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getReceipt, updateReceipt } from '@/lib/api';
+import { getReceipt } from '@/lib/api';
 import { normalizeReceiptResponse, NormalizedReceipt } from '@/lib/receiptNormalizer';
-import { getYNABConfig, exportToYNAB } from '@/lib/ynab';
+import { getYnabStatus, exportToYnab, isYnabReady, summarizeYnabExport, ynabErrorMessage, YnabStatus } from '@/lib/ynab';
 import { formatCurrency } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -31,8 +31,15 @@ const Confirmation = () => {
   const [exporting, setExporting] = useState(false);
   const [showFullImage, setShowFullImage] = useState(false);
   
-  const ynabConfig = getYNABConfig();
-  const isYnabConfigured = ynabConfig.token && ynabConfig.budgetId && ynabConfig.accountId;
+  // undefined while loading, null if the status could not be read
+  const [ynabStatus, setYnabStatus] = useState<YnabStatus | null | undefined>(undefined);
+  const isYnabConfigured = isYnabReady(ynabStatus);
+
+  useEffect(() => {
+    getYnabStatus()
+      .then(setYnabStatus)
+      .catch(() => setYnabStatus(null));
+  }, []);
 
   useEffect(() => {
     const fetchReceipt = async () => {
@@ -175,51 +182,24 @@ const Confirmation = () => {
                   onClick={async () => {
                     setExporting(true);
                     try {
-                      const result = await exportToYNAB([{
-                        receiptId: receipt.id,
-                        id: receipt.id,
-                        payee: receipt.payee || '',
-                        date: receipt.date || '',
-                        total: receipt.total || 0,
-                        vat: receipt.vat,
-                        vatRate: receipt.vatRate,
-                        category: receipt.category,
-                        notes: receipt.notes,
-                        status: receipt.status,
-                        imageUrl: receipt.imageUrl,
-                      }], ynabConfig);
-                      
-                      if (result.success) {
-                        // Update backend with YNAB export timestamp
-                        try {
-                          await updateReceipt(receiptId!, {
-                            ynabExportedAt: new Date().toISOString(),
-                          });
-                          // Update local state to disable button
-                          setReceipt({ ...receipt, ynabExportedAt: new Date().toISOString() });
-                        } catch (updateError) {
-                          console.warn('Failed to save YNAB export status:', updateError);
-                          toast({
-                            title: 'Export salvato su YNAB',
-                            description: 'Ma non è stato possibile salvare lo stato nel backend',
-                            variant: 'default',
-                          });
-                        }
+                      const result = await exportToYnab([receiptId!]);
+                      if (result.exportedIds.length > 0) {
+                        setReceipt({ ...receipt, ynabExportedAt: result.exportedAt });
                         toast({
                           title: 'Exported to YNAB',
-                          description: 'Transaction exported successfully',
+                          description: summarizeYnabExport(result),
                         });
                       } else {
                         toast({
-                          title: 'YNAB export error',
-                          description: result.error || 'Unknown error',
+                          title: 'Not exported to YNAB',
+                          description: summarizeYnabExport(result),
                           variant: 'destructive',
                         });
                       }
                     } catch (error) {
                       toast({
                         title: 'YNAB export error',
-                        description: error instanceof Error ? error.message : 'Unknown error',
+                        description: ynabErrorMessage(error),
                         variant: 'destructive',
                       });
                     } finally {
@@ -241,7 +221,7 @@ const Confirmation = () => {
                 </Button>
               )}
               
-              {!isYnabConfigured && (
+              {ynabStatus !== undefined && !isYnabConfigured && (
                 <Button 
                   variant="outline"
                   onClick={() => navigate('/settings')} 
