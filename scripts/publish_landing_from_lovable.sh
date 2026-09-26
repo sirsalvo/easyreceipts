@@ -104,6 +104,8 @@ KEEP_FILES=(
   "ynab-receipts/index.html"
   "og-receipt-to-csv.png"
   "og-ynab-receipts.png"
+  "ynab-receipt-scanner/index.html"
+  "og-ynab-receipt-scanner.png"
   # Upstream lastmod dates are stale (2026-02-11); the repo copy is maintained.
   "sitemap.xml"
 )

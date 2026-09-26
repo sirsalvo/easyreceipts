@@ -4,78 +4,68 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Primary Meta Tags -->
-  <title>Convert Receipt Photos to Spreadsheet or CSV</title>
+  <title>YNAB Receipt Scanner – Photo to YNAB Transaction</title>
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-  <meta name="title" content="Convert Receipt Photos to Spreadsheet or CSV" />
-  <meta name="description" content="Convert receipt photos into clean CSV files for Excel or Google Sheets. Review the extracted data and export spreadsheet-ready expenses in seconds." />
+  <meta name="title" content="YNAB Receipt Scanner – Photo to YNAB Transaction" />
+  <meta name="description" content="Scan a receipt, review the extracted data and send it to YNAB as a transaction. Your categories stay untouched. 14-day free trial, no credit card." />
   <meta name="author" content="Spendify" />
   <meta name="robots" content="index, follow" />
 
-  <!-- Favicon -->
-
-  <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://spendifyapp.com/receipt-to-csv/" />
-  <meta property="og:title" content="Convert Receipt Photos to Spreadsheet or CSV" />
-  <meta property="og:description" content="Convert receipt photos into clean CSV files for Excel or Google Sheets. Review the extracted data and export spreadsheet-ready expenses in seconds." />
-  <meta property="og:image" content="https://spendifyapp.com/og-receipt-to-csv.png" />
+  <meta property="og:url" content="https://spendifyapp.com/ynab-receipt-scanner/" />
+  <meta property="og:title" content="YNAB Receipt Scanner – Photo to YNAB Transaction" />
+  <meta property="og:description" content="Scan a receipt, review the extracted data and send it to YNAB as a transaction. Your categories stay untouched. 14-day free trial, no credit card." />
+  <meta property="og:image" content="https://spendifyapp.com/og-ynab-receipt-scanner.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
   <meta property="og:site_name" content="Spendify" />
 
-  <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:url" content="https://spendifyapp.com/receipt-to-csv/" />
-  <meta name="twitter:title" content="Convert Receipt Photos to Spreadsheet or CSV" />
-  <meta name="twitter:description" content="Convert receipt photos into clean CSV files for Excel or Google Sheets. Review the extracted data and export spreadsheet-ready expenses in seconds." />
-  <meta name="twitter:image" content="https://spendifyapp.com/og-receipt-to-csv.png" />
+  <meta name="twitter:url" content="https://spendifyapp.com/ynab-receipt-scanner/" />
+  <meta name="twitter:title" content="YNAB Receipt Scanner – Photo to YNAB Transaction" />
+  <meta name="twitter:description" content="Scan a receipt, review the extracted data and send it to YNAB as a transaction. Your categories stay untouched. 14-day free trial, no credit card." />
+  <meta name="twitter:image" content="https://spendifyapp.com/og-ynab-receipt-scanner.png" />
 
-  <!-- Canonical URL -->
-  <link rel="canonical" href="https://spendifyapp.com/receipt-to-csv/" />
+  <link rel="canonical" href="https://spendifyapp.com/ynab-receipt-scanner/" />
 
-  <!-- Font Preload -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;500;600;700;800&display=swap" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;500;600;700;800&display=swap" media="print" onload="this.media='all'" />
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;500;600;700;800&display=swap" /></noscript>
 
-  <!-- Structured Data - HowTo Schema -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "HowTo",
-    "name": "How to Convert Receipt Photos to CSV",
-    "description": "Turn receipt photos into clean CSV files for Excel or Google Sheets in three simple steps.",
-    "totalTime": "PT1M",
+    "name": "How to Send a Receipt to YNAB with Spendify",
+    "description": "Photograph a receipt, review the extracted data and send it to YNAB as a transaction.",
     "step": [
       {
         "@type": "HowToStep",
         "position": 1,
-        "name": "Upload a receipt photo",
-        "text": "Take a photo or upload an image. AI extracts the date, merchant, and total automatically."
+        "name": "Scan the receipt",
+        "text": "Take a photo or upload an image. Spendify reads the date, merchant and total."
       },
       {
         "@type": "HowToStep",
         "position": 2,
-        "name": "Review and correct the extracted data",
-        "text": "Check the date, merchant name, and total amount. Fix anything the AI got wrong before exporting."
+        "name": "Review the details",
+        "text": "Check the extracted data and correct anything that is wrong."
       },
       {
         "@type": "HowToStep",
         "position": 3,
-        "name": "Export as CSV",
-        "text": "Download a clean CSV file and import it into Google Sheets, Excel, or any spreadsheet app."
+        "name": "Send it to YNAB",
+        "text": "Select the receipts to send. Each one is created in YNAB as a transaction without a category."
       }
     ]
   }
   </script>
 
-  <!-- Structured Data - FAQ Schema -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -83,34 +73,42 @@
     "mainEntity": [
       {
         "@type": "Question",
-        "name": "What columns does the receipt CSV contain?",
+        "name": "Which details are sent to YNAB?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Each row is one receipt, with eight columns: Date, Merchant, Total, VAT, VAT Rate, Category, Notes and Receipt ID. You can open the file in Excel or import it into Google Sheets or any other spreadsheet app."
+          "text": "Each receipt becomes one transaction with the date, the amount as an outflow, the payee name and the memo “Export Spendify”. It is created in the account you chose, marked as cleared and approved."
         }
       },
       {
         "@type": "Question",
-        "name": "Is the data extracted automatically?",
+        "name": "Will Spendify change my YNAB categories?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "The date, merchant and amounts are read from the photo automatically, but not always perfectly. You can review each receipt and correct anything that looks wrong before you export."
+          "text": "No. Transactions are created without a category, so you keep assigning categories in YNAB the way you always do. Categories you set inside Spendify stay in Spendify and are never sent to YNAB."
         }
       },
       {
         "@type": "Question",
-        "name": "Can I export only some of my receipts?",
+        "name": "Can I send only some receipts to YNAB?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes. You choose which receipts to include and can filter them by date: the last 7 days, the last 30 days, this month, last month or a custom date range."
+          "text": "Yes. You pick which receipts to send and can filter them by date. Receipts you have already sent are left out of the next YNAB export, so you do not send the same one twice."
         }
       },
       {
         "@type": "Question",
-        "name": "Does Spendify connect to my bank account?",
+        "name": "Does it check for transactions already imported from my bank?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "No. Spendify does not connect to banks or financial institutions and does not sync transactions. You upload a receipt, review the data and choose what to export."
+          "text": "No. Spendify does not read your existing YNAB transactions, so it cannot tell whether a purchase was already imported from your bank. Check for a duplicate in YNAB if you use both."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Do I need YNAB to use Spendify?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. You can also export your receipts as a CSV file for Excel or Google Sheets. See how receipt photos become a spreadsheet."
         }
       },
       {
@@ -125,7 +123,6 @@
   }
   </script>
 
-  <!-- Structured Data - Breadcrumb -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -140,8 +137,8 @@
       {
         "@type": "ListItem",
         "position": 2,
-        "name": "Receipt to CSV",
-        "item": "https://spendifyapp.com/receipt-to-csv/"
+        "name": "YNAB Receipt Scanner",
+        "item": "https://spendifyapp.com/ynab-receipt-scanner/"
       }
     ]
   }
@@ -289,7 +286,6 @@
   </style>
 </head>
 <body>
-  <!-- Header -->
   <header class="header">
     <div class="header-inner">
       <a href="/" class="logo">
@@ -301,138 +297,120 @@
   </header>
 
   <main>
-    <!-- Hero -->
     <section class="hero">
       <div class="container">
-        <h1>Turn Receipt Photos Into CSV Files</h1>
-        <h2>(for Excel &amp; Google Sheets)</h2>
-        <p>Upload a receipt, review the extracted data, and export a clean CSV file in seconds.<br>No accounting suite. No bank connections. Just structured data.</p>
-        <p class="subtext">Perfect for freelancers and small businesses tracking expenses in spreadsheets.</p>
+        <h1>A Receipt Scanner Built for YNAB</h1>
+        <h2>(photo in, YNAB transaction out)</h2>
+        <p>Photograph a receipt, check what was read, and send it to YNAB as a transaction.<br>Your categories stay exactly where you left them.</p>
+        <p class="subtext">For people who budget in YNAB and are tired of typing in cash receipts.</p>
         <div class="hero-buttons">
           <div style="text-align:center">
-            <a href="https://app.spendifyapp.com/login" class="btn btn-cta" target="_blank" rel="noopener noreferrer">Export Your First Receipt →</a>
-            <p class="microcopy">No credit card required.</p>
+            <a href="https://app.spendifyapp.com/login" class="btn btn-cta" target="_blank" rel="noopener noreferrer">Try Spendify with YNAB →</a>
+            <p class="microcopy">14-day free trial. No credit card required.</p>
           </div>
           <a href="#how-it-works" class="btn btn-outline">See How It Works</a>
         </div>
       </div>
     </section>
 
-    <!-- Problem -->
-    <section class="section">
-      <div class="container">
-        <h2 class="section-title">Receipts Don't Belong in Spreadsheets</h2>
-        <div class="prose">
-          <p>If you track expenses in Excel or Google Sheets, the spreadsheet itself isn't the problem. The friction comes from manually typing receipt data — especially small or infrequent expenses.</p>
-          <p>Looking for a simple way to convert a receipt to CSV without expensive accounting software?</p>
-          <p>Receipts pile up. Entry gets postponed. Consistency breaks.</p>
-          <p class="highlight">Spendify removes just that friction.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- Convert to Excel / Sheets -->
-    <section class="section section-alt">
-      <div class="container" style="text-align:center">
-        <h2 class="section-title">Convert Receipt to Excel or Google Sheets</h2>
-        <div class="prose">
-          <p>Spendify extracts key data from your receipt — date, merchant, total — and lets you download it as a CSV file that opens directly in Excel or Google Sheets.</p>
-          <p class="highlight">No formatting headaches. No manual retyping. Just spreadsheet-ready data.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- How It Works -->
     <section id="how-it-works" class="section">
       <div class="container">
-        <h2 class="section-title">How It Works</h2>
-        <p style="text-align:center;color:var(--muted-foreground);font-size:1.125rem;margin-bottom:1rem;">From receipt photo to CSV in three simple steps.</p>
+        <h2 class="section-title">From Receipt to YNAB in Three Steps</h2>
         <div class="steps-grid">
           <div class="step-card">
             <div class="step-number">1</div>
-            <h3>Upload a receipt photo</h3>
-            <p>Take a photo or upload an image. AI extracts the date, merchant, and total automatically.</p>
+            <h3>Scan the receipt</h3>
+            <p>Take a photo or upload an image. Spendify reads the date, merchant and total.</p>
           </div>
           <div class="step-card">
             <div class="step-number">2</div>
-            <h3>Review and correct the data</h3>
-            <p>Check the date, merchant name, and total amount. Fix anything the AI got wrong before exporting.</p>
+            <h3>Review the details</h3>
+            <p>OCR is not perfect, so you check the result and fix anything that is wrong.</p>
           </div>
           <div class="step-card">
             <div class="step-number">3</div>
-            <h3>Export as CSV</h3>
-            <p>Download a clean CSV file and import it into Google Sheets, Excel, or any spreadsheet app.</p>
+            <h3>Send it to YNAB</h3>
+            <p>Choose the receipts to send. Each one becomes a transaction in the account you picked.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Why CSV -->
     <section class="section section-alt">
       <div class="container" style="text-align:center">
-        <h2 class="section-title">Why CSV?</h2>
-        <p style="font-size:1.125rem;color:var(--muted-foreground);margin-bottom:1.5rem;">CSV works everywhere.</p>
+        <h2 class="section-title">What Ends Up in YNAB</h2>
+        <p style="font-size:1.125rem;color:var(--muted-foreground);margin-bottom:1.5rem;">Every receipt becomes one transaction with:</p>
         <ul class="check-list" style="display:inline-block;text-align:left;margin-bottom:1.5rem;">
-          <li><span class="check-icon">✓</span> Google Sheets</li>
-          <li><span class="check-icon">✓</span> Microsoft Excel</li>
-          <li><span class="check-icon">✓</span> Apple Numbers</li>
-          <li><span class="check-icon">✓</span> Custom accounting systems</li>
+          <li><span class="check-icon">✓</span> The receipt date</li>
+          <li><span class="check-icon">✓</span> The amount, as an outflow</li>
+          <li><span class="check-icon">✓</span> The merchant as the payee</li>
+          <li><span class="check-icon">✓</span> The memo “Export Spendify”</li>
+          <li><span class="check-icon">✓</span> Status: cleared and approved</li>
+
         </ul>
         <div class="prose">
-          <p>No lock-in. No proprietary format.</p>
-          <p class="highlight">Just clean, structured expense data you control.</p>
+          <p class="highlight">No category is sent. You assign categories in YNAB, as you already do.</p>
         </div>
       </div>
     </section>
 
-    <!-- Privacy -->
     <section class="section">
       <div class="container">
-        <h2 class="section-title">No Bank Connections. No Syncing.</h2>
+        <h2 class="section-title">Your YNAB Categories Stay Intact</h2>
         <div class="prose">
-          <p>Spendify does not connect to financial institutions.<br>It does not access bank accounts.<br>It does not sync transactions automatically.</p>
-          <p>You upload a receipt.<br>You review the data.<br>You choose what to export.</p>
-          <p class="highlight"><strong>That's it.</strong></p>
+          <p>Spendify never overwrites categories in YNAB. Transactions arrive without one, so your budget, your rules and your category habits stay in YNAB.</p>
+          <p>Categories you set inside Spendify are for your own organisation only. They are never sent to YNAB.</p>
         </div>
       </div>
     </section>
 
-    <!-- Who It's For -->
     <section class="section section-alt">
       <div class="container">
-        <h2 class="section-title">Built For</h2>
-        <ul class="check-list" style="max-width:36rem;margin:0 auto 1.5rem;">
-          <li><span class="check-icon">✓</span> Freelancers tracking expenses in spreadsheets</li>
-          <li><span class="check-icon">✓</span> Small business owners who don't need full accounting software</li>
-          <li><span class="check-icon">✓</span> People who want receipt-to-CSV, not a finance suite</li>
-        </ul>
-        <p style="text-align:center;color:var(--muted-foreground);font-style:italic;">Not built for replacing full bookkeeping software.</p>
+        <h2 class="section-title">Set It Up Once</h2>
+        <div class="prose">
+          <p>You connect YNAB with a Personal Access Token, which you create in YNAB under Account Settings → Developer Settings. Then you enter your Budget ID (or use “last-used”) and the Account ID that receipts should go to.</p>
+          <p>Spendify sends each transaction from your browser directly to YNAB, using your token, which is stored in your browser.</p>
+        </div>
       </div>
     </section>
 
-    <!-- FAQ -->
+    <section class="section">
+      <div class="container">
+        <h2 class="section-title">No Double Entries From Spendify</h2>
+        <div class="prose">
+          <p>Spendify remembers which receipts you have already sent and leaves them out of the next YNAB export. You can also pick receipts one by one, or filter by date.</p>
+          <p>One limit to know about: Spendify does not read your existing YNAB transactions, so it cannot tell if a purchase was already imported from your bank.</p>
+        </div>
+      </div>
+    </section>
+
     <section class="section section-alt">
       <div class="container faq-section">
         <h2 class="section-title">Frequently asked questions</h2>
 
         <article class="faq-item">
-          <h3>What columns does the receipt CSV contain?</h3>
-          <p>Each row is one receipt, with eight columns: Date, Merchant, Total, VAT, VAT Rate, Category, Notes and Receipt ID. You can open the file in Excel or import it into Google Sheets or any other spreadsheet app.</p>
+          <h3>Which details are sent to YNAB?</h3>
+          <p>Each receipt becomes one transaction with the date, the amount as an outflow, the payee name and the memo “Export Spendify”. It is created in the account you chose, marked as cleared and approved.</p>
         </article>
 
         <article class="faq-item">
-          <h3>Is the data extracted automatically?</h3>
-          <p>The date, merchant and amounts are read from the photo automatically, but not always perfectly. You can review each receipt and correct anything that looks wrong before you export.</p>
+          <h3>Will Spendify change my YNAB categories?</h3>
+          <p>No. Transactions are created without a category, so you keep assigning categories in YNAB the way you always do. Categories you set inside Spendify stay in Spendify and are never sent to YNAB.</p>
         </article>
 
         <article class="faq-item">
-          <h3>Can I export only some of my receipts?</h3>
-          <p>Yes. You choose which receipts to include and can filter them by date: the last 7 days, the last 30 days, this month, last month or a custom date range.</p>
+          <h3>Can I send only some receipts to YNAB?</h3>
+          <p>Yes. You pick which receipts to send and can filter them by date. Receipts you have already sent are left out of the next YNAB export, so you do not send the same one twice.</p>
         </article>
 
         <article class="faq-item">
-          <h3>Does Spendify connect to my bank account?</h3>
-          <p>No. Spendify does not connect to banks or financial institutions and does not sync transactions. You upload a receipt, review the data and choose what to export.</p>
+          <h3>Does it check for transactions already imported from my bank?</h3>
+          <p>No. Spendify does not read your existing YNAB transactions, so it cannot tell whether a purchase was already imported from your bank. Check for a duplicate in YNAB if you use both.</p>
+        </article>
+
+        <article class="faq-item">
+          <h3>Do I need YNAB to use Spendify?</h3>
+          <p>No. You can also export your receipts as a CSV file for Excel or Google Sheets. See <a href="/receipt-to-csv/" class="text-link">how receipt photos become a spreadsheet</a>.</p>
         </article>
 
         <article class="faq-item">
@@ -442,29 +420,25 @@
       </div>
     </section>
 
-    <!-- Internal Links -->
     <section class="section">
       <div class="container" style="text-align:center">
-        <p style="font-size:1.125rem;color:var(--muted-foreground);margin-bottom:1rem;">Looking to create YNAB transactions instead? <a href="/ynab-receipt-scanner/" class="text-link">See how Spendify works with YNAB.</a></p>
+        <p style="font-size:1.125rem;color:var(--muted-foreground);margin-bottom:1rem;">Want the bigger picture? <a href="/ynab-receipts/" class="text-link">Read how to enter receipts in YNAB without typing.</a></p>
+        <p style="color:var(--muted-foreground);margin-bottom:1rem;">Prefer a spreadsheet? <a href="/receipt-to-csv/" class="text-link">Convert receipt photos to a spreadsheet or CSV.</a></p>
         <p style="color:var(--muted-foreground);"><a href="/" class="text-link">Back to homepage</a></p>
       </div>
     </section>
 
-    <!-- Final CTA -->
     <section class="cta-section">
       <div class="container">
-        <h2>Make Receipt Entry Frictionless</h2>
+        <h2>Stop Typing Receipts Into YNAB</h2>
         <a href="https://app.spendifyapp.com/login" class="btn btn-cta" target="_blank" rel="noopener noreferrer">Try Spendify →</a>
-        <p>Start with one receipt. Export to CSV instantly.</p>
+        <p>Start with one receipt. 14-day free trial, no credit card required.</p>
       </div>
     </section>
   </main>
 
   <footer class="footer">
-      <!-- Trailing slash matters: /ynab-receipts is 301'd to /ynab-receipts/
-           by the CloudFront router, so linking without it wastes a hop on
-           every internal click and crawl. -->
-      <p>&copy; 2026 Spendify. <a href="/">Home</a> · <a href="/ynab-receipts/">YNAB Receipts</a></p>
+      <p>&copy; 2026 Spendify. <a href="/">Home</a> · <a href="/ynab-receipts/">YNAB Receipts</a> · <a href="/receipt-to-csv/">Receipt to CSV</a></p>
   </footer>
 </body>
 </html>
