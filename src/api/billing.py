@@ -125,7 +125,7 @@ def create_checkout_session(event: Dict[str, Any], json_fn, origin: str) -> Dict
     try:
         session = stripe.checkout.Session.create(**{k: v for k, v in params.items() if v is not None})
         return json_fn(200, {"url": session["url"]}, origin)
-    except Exception:
+    except Exception as e:
         print("Stripe checkout error:", repr(e))
         return json_fn(500, {"error": "CHECKOUT_FAILED", "message": "Unable to start checkout. Please try again."}, origin)
 
