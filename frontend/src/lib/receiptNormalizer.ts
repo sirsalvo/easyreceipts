@@ -1,6 +1,8 @@
 // Robust receipt response normalizer
 // Handles various API response shapes and field locations
 
+import { parseVatRate } from './vatRate';
+
 export interface NormalizedReceipt {
   id: string;
   status: string;
@@ -80,30 +82,6 @@ const formatDate = (value: unknown): string => {
     }
   }
   
-  return '';
-};
-
-// Helper to extract VAT rate percentage from string like "A 22.00%"
-const parseVatRate = (value: unknown): string => {
-  if (!value) return '';
-  if (typeof value === 'number') return String(value);
-  if (typeof value === 'string') {
-    // If it's already a clean number string (from saved data), return as-is
-    if (/^\d+$/.test(value.trim())) {
-      return value.trim();
-    }
-    // Extract number from strings like "A 22.00%" or "22%"
-    const match = value.match(/(\d+(?:\.\d+)?)\s*%?/);
-    if (match) {
-      const rate = parseFloat(match[1]);
-      // Round to nearest common rate
-      if (rate <= 2) return '0';
-      if (rate <= 4.5) return '4';
-      if (rate <= 7) return '5';
-      if (rate <= 15) return '10';
-      return '22';
-    }
-  }
   return '';
 };
 

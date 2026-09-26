@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { COMMON_VAT_RATES, normalizeVatRateInput } from '@/lib/vatRate';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -51,8 +52,6 @@ interface FormErrors {
   vat?: string;
   vatRate?: string;
 }
-
-const VAT_RATES = ['0', '4', '5', '10', '22'];
 
 const UNASSIGNED_VALUE = '__unassigned__';
 
@@ -172,8 +171,8 @@ const Review = () => {
       newErrors.vat = 'Valid VAT amount is required';
     }
 
-    if (!formData.vatRate) {
-      newErrors.vatRate = 'VAT rate is required';
+    if (normalizeVatRateInput(formData.vatRate) === null) {
+      newErrors.vatRate = 'Enter a VAT rate between 0 and 100';
     }
 
     // Category is optional - no validation needed
@@ -211,7 +210,7 @@ const Review = () => {
         date: formData.date,
         total: parseFloat(formData.total.replace(',', '.')),
         vat: parseFloat(formData.vat.replace(',', '.')),
-        vatRate: formData.vatRate,
+        vatRate: normalizeVatRateInput(formData.vatRate) ?? formData.vatRate,
         category: formData.category || null,
         notes: formData.notes.trim(),
       };
@@ -437,26 +436,26 @@ const Review = () => {
               )}
             </div>
 
-            {/* VAT Rate */}
+            {/* VAT Rate: any rate, the suggestions are only shortcuts */}
             <div className="space-y-2">
-              <Label className={errors.vatRate ? 'text-destructive' : ''}>
-                VAT Rate *
+              <Label htmlFor="vatRate" className={errors.vatRate ? 'text-destructive' : ''}>
+                VAT Rate (%) *
               </Label>
-              <Select
+              <Input
+                id="vatRate"
+                type="text"
+                inputMode="decimal"
+                list="vat-rate-options"
+                placeholder="e.g. 20"
                 value={formData.vatRate}
-                onValueChange={(value) => handleInputChange('vatRate', value)}
-              >
-                <SelectTrigger className={errors.vatRate ? 'border-destructive' : ''}>
-                  <SelectValue placeholder="Select VAT rate" />
-                </SelectTrigger>
-                <SelectContent>
-                  {VAT_RATES.map((rate) => (
-                    <SelectItem key={rate} value={rate}>
-                      {rate}%
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                onChange={(e) => handleInputChange('vatRate', e.target.value)}
+                className={errors.vatRate ? 'border-destructive' : ''}
+              />
+              <datalist id="vat-rate-options">
+                {COMMON_VAT_RATES.map((rate) => (
+                  <option key={rate} value={rate} />
+                ))}
+              </datalist>
               {errors.vatRate && (
                 <p className="text-xs text-destructive">{errors.vatRate}</p>
               )}
