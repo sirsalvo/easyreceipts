@@ -372,7 +372,22 @@ alla versione senza le correzioni SEO.
   or CSV`.
 - **FAQ di `/receipt-to-csv/`**: 5 domande con `FAQPage`, verificate nel codice.
 
-Il 10/10 gli effetti di home, titolo, FAQ e `noindex` non sono separabili.
+- **`/ynab-receipt-scanner/` e `/receipt-scanner-vat/`** pubblicate il 2026-09-26.
+  La pagina IVA promette solo ciò che il prodotto fa: nessuna colonna del
+  netto, importi mostrati in euro (`formatCurrency` è fisso `it-IT`/`EUR`),
+  nessuna conversione di valuta.
+
+**IVA nell'app (2026-09-26).** Il form offriva solo 0/4/5/10/22 e il
+normalizzatore arrotondava ogni aliquota rilevata a quelle: un 20 % diventava
+22 e finiva così nel CSV. Ora l'aliquota è libera (0-100, con suggerimenti) e non
+viene più arrotondata (`frontend/src/lib/vatRate.ts`). Se la scansione non trova
+l'IVA il form non blocca più: importo 0 e aliquota 0, e digitando l'importo
+l'aliquota si compila dal totale finché non arriva dalla scansione o la scrivi
+tu. Test: `node --experimental-strip-types test/test_vat_rate.mjs` e
+`node test/e2e_review_vat.mjs frontend/dist` (browser vero, API simulate).
+Limite: bozze salvate prima con aliquota 22 e IVA vuota mostrano ancora 22.
+
+Il 10/10 gli effetti di home, titolo, FAQ, `noindex` e nuove pagine non sono separabili.
 
 ### Azioni manuali in Search Console (richiedono login)
 
