@@ -281,10 +281,10 @@ modifiche che toccano backend, UI e landing insieme.
 
 ### P0 — ricavi e dati
 
-**`NameError` in `billing.py:129`.** `except Exception:` seguito da
-`print(..., repr(e))` con `e` non definito. Ogni errore Stripe diventa un
-`NameError` non gestito → 500 generico, nessun log utile. **Una riga**, e
-sblocca la diagnosi di qualsiasi checkout fallito.
+**`NameError` in `billing.py:129` — risolto il 2026-09-26.** `except Exception:` senza
+`as e` faceva esplodere ogni errore Stripe del checkout in un 500 generico senza
+log. Correzione di una riga, `test/test_billing.py` (6 test, i due sul checkout
+fallivano prima), deployato in prod con changeset (solo `ApiFunction`).
 
 **Le disdette Stripe non declassano l'utente.** `create_checkout_session` mette
 `metadata.userId` sulla *sessione*, non su `subscription_data.metadata`. Il
