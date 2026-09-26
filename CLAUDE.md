@@ -214,7 +214,7 @@ a quelle live (verificato prima del deploy), quindi il deploy della UI ha
 cambiato solo `index.html` e `robots.txt`. **Il backend non è stato toccato**
 e resta quello del 2026-09.
 
-### YNAB: OAuth in corso (branch `feat/ynab-oauth`, NON in produzione)
+### YNAB: OAuth in produzione dal 2026-09-26 (in attesa di approvazione)
 
 YNAB ha rifiutato l'app per la lista "Works with YNAB" (thread del 2026-02-23/25
 con help@ynab.com): chiedeva il **Personal Access Token** dell'utente, vietato
@@ -240,22 +240,24 @@ rispondere al thread per "scongelare" la richiesta *API OAuth Community App*.
   Textract, il PDF a pagina singola passa, quello multipagina no (serve l'API
   asincrona, uno stato FAILED e un'anteprima). Da fare a parte.
 
-**Stato prod (2026-09-26): il backend è già deployato** dal branch (chiave KMS
-`YnabTokenKey` creata, rotte `/ynab/*` attive; `main` non lo contiene ancora, quindi
-repo e prod divergono finché non si fa il merge). Interfaccia e landing di prod
-sono ancora quelle vecchie. Mancano in SSM prod `client_id` e `client_secret`.
+**Stato (2026-09-26, sera): tutto in produzione e allineato a `main`.** Backend
+(chiave KMS `YnabTokenKey`, rotte `/ynab/*`), interfaccia dell'app e landing
+(home, privacy, termini, pagine) sono live; `main` li contiene. I repo Lovable
+di app e landing sono stati pushati. Il flusso è verificato su dev con un
+account YNAB vero; su prod è verificata la configurazione (client id, redirect
+URI, PKCE) ma **non ancora un giro completo di connessione con YNAB**.
+L'app OAuth di YNAB è in Restricted Mode (max 25 token per utenti diversi dal
+proprietario) finché non arriva l'approvazione.
 
-**Manca per andare live:** creare le app OAuth in YNAB (dev e prod) e mettere
-`/spendify/{env}/ynab/client_id` (String) e `client_secret` (SecureString) in
-SSM; test end-to-end su dev con un account YNAB vero; poi il rilascio.
+**Da fare:** provare la connessione su `app.spendifyapp.com`; inviare la
+risposta a YNAB (`docs/ynab-review-reply.md`, dopo il controllo elencato nel
+file); decidere sul badge "Works with YNAB" della home; PDF e gestione errori
+OCR (lavoro a parte). Chi esportava su YNAB col token dovrà riconnettersi una
+volta.
 
-**Ordine di rilascio (prod):** 1) `deploy_backend.sh prod` con changeset (crea
-la chiave KMS, `Retain`); 2) push del repo Lovable dell'app e
-`sync_frontend_from_lovable.sh`, poi `deploy_ui.sh prod`; 3)
-`publish_landing_from_lovable.sh prod` (rebase del commit locale della landing);
-4) merge di `feat/ynab-oauth` in `main`; 5) rispondere a YNAB. **Non deployare
-la landing da questo branch prima del passo 1-2**: descrive un flusso che in
-produzione ancora non c'è.
+**Ordine seguito per il rilascio:** backend con changeset → push repo Lovable
+app → `deploy_ui.sh prod` → landing → merge in `main`. Riutilizzabile per
+modifiche che toccano backend, UI e landing insieme.
 
 **Trappole scoperte:**
 - `apiRequest` (frontend) tratta **ogni 401/403 come sessione scaduta** e
