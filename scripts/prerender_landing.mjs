@@ -65,6 +65,18 @@ try {
   // as a structured-data spam violation.
   html = html.replace(/,\s*"aggregateRating":\s*\{[^}]*\}/, '');
 
+  // The build declares the app as free (price 0 USD). The real plan is a
+  // 14-day trial, then EUR 4.99/month; a price of 0 is misleading markup.
+  const offers = `"offers": {
+        "@type": "Offer",
+        "price": "4.99",
+        "priceCurrency": "EUR",
+        "description": "14-day free trial, then 4.99 EUR per month"
+      }`;
+  const beforeOffers = html;
+  html = html.replace(/"offers":\s*\{[^}]*\}/, () => offers);
+  if (html === beforeOffers) throw new Error('offers block not found in dist/index.html');
+
   // The build declares /spendify-icon.png (694x677, not square), which Google
   // rejects and answers with the root /favicon.ico. Declare the square set.
   const icons = [
