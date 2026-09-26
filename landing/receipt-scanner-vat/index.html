@@ -4,78 +4,68 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Primary Meta Tags -->
-  <title>Convert Receipt Photos to Spreadsheet or CSV</title>
+  <title>Receipt Scanner for VAT – Capture VAT Amount and Rate</title>
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-  <meta name="title" content="Convert Receipt Photos to Spreadsheet or CSV" />
-  <meta name="description" content="Convert receipt photos into clean CSV files for Excel or Google Sheets. Review the extracted data and export spreadsheet-ready expenses in seconds." />
+  <meta name="title" content="Receipt Scanner for VAT – Capture VAT Amount and Rate" />
+  <meta name="description" content="Photograph a receipt and get the VAT amount and rate in a CSV for your spreadsheet. You review each receipt first. 14-day free trial, no card." />
   <meta name="author" content="Spendify" />
   <meta name="robots" content="index, follow" />
 
-  <!-- Favicon -->
-
-  <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://spendifyapp.com/receipt-to-csv/" />
-  <meta property="og:title" content="Convert Receipt Photos to Spreadsheet or CSV" />
-  <meta property="og:description" content="Convert receipt photos into clean CSV files for Excel or Google Sheets. Review the extracted data and export spreadsheet-ready expenses in seconds." />
-  <meta property="og:image" content="https://spendifyapp.com/og-receipt-to-csv.png" />
+  <meta property="og:url" content="https://spendifyapp.com/receipt-scanner-vat/" />
+  <meta property="og:title" content="Receipt Scanner for VAT – Capture VAT Amount and Rate" />
+  <meta property="og:description" content="Photograph a receipt and get the VAT amount and rate in a CSV for your spreadsheet. You review each receipt first. 14-day free trial, no card." />
+  <meta property="og:image" content="https://spendifyapp.com/og-receipt-scanner-vat.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
   <meta property="og:site_name" content="Spendify" />
 
-  <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:url" content="https://spendifyapp.com/receipt-to-csv/" />
-  <meta name="twitter:title" content="Convert Receipt Photos to Spreadsheet or CSV" />
-  <meta name="twitter:description" content="Convert receipt photos into clean CSV files for Excel or Google Sheets. Review the extracted data and export spreadsheet-ready expenses in seconds." />
-  <meta name="twitter:image" content="https://spendifyapp.com/og-receipt-to-csv.png" />
+  <meta name="twitter:url" content="https://spendifyapp.com/receipt-scanner-vat/" />
+  <meta name="twitter:title" content="Receipt Scanner for VAT – Capture VAT Amount and Rate" />
+  <meta name="twitter:description" content="Photograph a receipt and get the VAT amount and rate in a CSV for your spreadsheet. You review each receipt first. 14-day free trial, no card." />
+  <meta name="twitter:image" content="https://spendifyapp.com/og-receipt-scanner-vat.png" />
 
-  <!-- Canonical URL -->
-  <link rel="canonical" href="https://spendifyapp.com/receipt-to-csv/" />
+  <link rel="canonical" href="https://spendifyapp.com/receipt-scanner-vat/" />
 
-  <!-- Font Preload -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;500;600;700;800&display=swap" />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;500;600;700;800&display=swap" media="print" onload="this.media='all'" />
   <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@300;400;500;600;700;800&display=swap" /></noscript>
 
-  <!-- Structured Data - HowTo Schema -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "HowTo",
-    "name": "How to Convert Receipt Photos to CSV",
-    "description": "Turn receipt photos into clean CSV files for Excel or Google Sheets in three simple steps.",
-    "totalTime": "PT1M",
+    "name": "How to Capture the VAT on a Receipt",
+    "description": "Photograph a receipt, check the VAT amount and rate, and export them to a CSV file.",
     "step": [
       {
         "@type": "HowToStep",
         "position": 1,
-        "name": "Upload a receipt photo",
-        "text": "Take a photo or upload an image. AI extracts the date, merchant, and total automatically."
+        "name": "Scan the receipt",
+        "text": "Take a photo or upload an image. Spendify reads the date, merchant, total and VAT."
       },
       {
         "@type": "HowToStep",
         "position": 2,
-        "name": "Review and correct the extracted data",
-        "text": "Check the date, merchant name, and total amount. Fix anything the AI got wrong before exporting."
+        "name": "Check the VAT",
+        "text": "Review the VAT amount and the VAT rate, and correct anything that is wrong."
       },
       {
         "@type": "HowToStep",
         "position": 3,
-        "name": "Export as CSV",
-        "text": "Download a clean CSV file and import it into Google Sheets, Excel, or any spreadsheet app."
+        "name": "Export to CSV",
+        "text": "Download a CSV with the total, the VAT amount and the VAT rate of the receipts you select."
       }
     ]
   }
   </script>
 
-  <!-- Structured Data - FAQ Schema -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -83,34 +73,42 @@
     "mainEntity": [
       {
         "@type": "Question",
-        "name": "What columns does the receipt CSV contain?",
+        "name": "Which VAT rates does Spendify support?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Each row is one receipt, with eight columns: Date, Merchant, Total, VAT, VAT Rate, Category, Notes and Receipt ID. You can open the file in Excel or import it into Google Sheets or any other spreadsheet app."
+          "text": "Any rate from 0 to 100 percent, for example 20%, 19%, 21%, 22% or 7.7%. The rate on each receipt is kept as it was detected or as you enter it, and it is never rounded to a fixed list."
         }
       },
       {
         "@type": "Question",
-        "name": "Is the data extracted automatically?",
+        "name": "Is the VAT read automatically?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "The date, merchant and amounts are read from the photo automatically, but not always perfectly. You can review each receipt and correct anything that looks wrong before you export."
+          "text": "Usually, when it is printed on the receipt. Spendify reads the VAT amount and, if the receipt prints a rate, the rate. If no rate is printed, it calculates one from the total and the VAT amount. The result is not always perfect, so you check it before it is saved."
         }
       },
       {
         "@type": "Question",
-        "name": "Can I export only some of my receipts?",
+        "name": "Does the CSV include the net amount?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Yes. You choose which receipts to include and can filter them by date: the last 7 days, the last 30 days, this month, last month or a custom date range."
+          "text": "No. The CSV has the total (VAT included), the VAT amount and the VAT rate, next to the date, merchant, category, notes and receipt ID. The net amount is the total minus the VAT, one formula in your spreadsheet."
         }
       },
       {
         "@type": "Question",
-        "name": "Does Spendify connect to my bank account?",
+        "name": "Does it work with currencies other than the euro?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "No. Spendify does not connect to banks or financial institutions and does not sync transactions. You upload a receipt, review the data and choose what to export."
+          "text": "The app shows amounts in euros. Spendify does not convert currencies, and the CSV contains plain numbers without a currency symbol."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does Spendify prepare or file my VAT return?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. Spendify captures the VAT on each receipt and exports it. It is not accounting software and does not give tax advice. Your VAT return stays in your own tools."
         }
       },
       {
@@ -125,7 +123,6 @@
   }
   </script>
 
-  <!-- Structured Data - Breadcrumb -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -140,8 +137,8 @@
       {
         "@type": "ListItem",
         "position": 2,
-        "name": "Receipt to CSV",
-        "item": "https://spendifyapp.com/receipt-to-csv/"
+        "name": "Receipt Scanner for VAT",
+        "item": "https://spendifyapp.com/receipt-scanner-vat/"
       }
     ]
   }
@@ -289,7 +286,6 @@
   </style>
 </head>
 <body>
-  <!-- Header -->
   <header class="header">
     <div class="header-inner">
       <a href="/" class="logo">
@@ -301,138 +297,121 @@
   </header>
 
   <main>
-    <!-- Hero -->
     <section class="hero">
       <div class="container">
-        <h1>Turn Receipt Photos Into CSV Files</h1>
-        <h2>(for Excel &amp; Google Sheets)</h2>
-        <p>Upload a receipt, review the extracted data, and export a clean CSV file in seconds.<br>No accounting suite. No bank connections. Just structured data.</p>
-        <p class="subtext">Perfect for freelancers and small businesses tracking expenses in spreadsheets.</p>
+        <h1>Capture the VAT on Every Receipt</h1>
+        <h2>(VAT amount and rate, in a spreadsheet-ready CSV)</h2>
+        <p>Photograph a receipt, check the VAT that was read, and export it with the total to a CSV file.<br>No accounting suite. No bank connections.</p>
+        <p class="subtext">For freelancers and small businesses that keep track of VAT in a spreadsheet.</p>
         <div class="hero-buttons">
           <div style="text-align:center">
-            <a href="https://app.spendifyapp.com/login" class="btn btn-cta" target="_blank" rel="noopener noreferrer">Export Your First Receipt →</a>
-            <p class="microcopy">No credit card required.</p>
+            <a href="https://app.spendifyapp.com/login" class="btn btn-cta" target="_blank" rel="noopener noreferrer">Scan Your First Receipt →</a>
+            <p class="microcopy">14-day free trial. No credit card required.</p>
           </div>
           <a href="#how-it-works" class="btn btn-outline">See How It Works</a>
         </div>
       </div>
     </section>
 
-    <!-- Problem -->
     <section class="section">
       <div class="container">
-        <h2 class="section-title">Receipts Don't Belong in Spreadsheets</h2>
+        <h2 class="section-title">VAT Is the Part You Retype</h2>
         <div class="prose">
-          <p>If you track expenses in Excel or Google Sheets, the spreadsheet itself isn't the problem. The friction comes from manually typing receipt data — especially small or infrequent expenses.</p>
-          <p>Looking for a simple way to convert a receipt to CSV without expensive accounting software?</p>
-          <p>Receipts pile up. Entry gets postponed. Consistency breaks.</p>
-          <p class="highlight">Spendify removes just that friction.</p>
+          <p>If you reclaim or report VAT, you need the VAT amount and the rate for each receipt. Typing them by hand is slow, and it is where mistakes creep in.</p>
+          <p class="highlight">Spendify reads them from the photo, and you check them before they are saved.</p>
         </div>
       </div>
     </section>
 
-    <!-- Convert to Excel / Sheets -->
     <section class="section section-alt">
       <div class="container" style="text-align:center">
-        <h2 class="section-title">Convert Receipt to Excel or Google Sheets</h2>
+        <h2 class="section-title">What Spendify Records for Each Receipt</h2>
+        <ul class="check-list" style="display:inline-block;text-align:left;margin-bottom:1.5rem;">
+          <li><span class="check-icon">✓</span> The date and the merchant</li>
+          <li><span class="check-icon">✓</span> The total, as printed (VAT included)</li>
+          <li><span class="check-icon">✓</span> The VAT amount</li>
+          <li><span class="check-icon">✓</span> The VAT rate, as a percentage</li>
+
+        </ul>
         <div class="prose">
-          <p>Spendify extracts key data from your receipt — date, merchant, total — and lets you download it as a CSV file that opens directly in Excel or Google Sheets.</p>
-          <p class="highlight">No formatting headaches. No manual retyping. Just spreadsheet-ready data.</p>
+          <p>Any VAT rate works, from 0 to 100 percent: 20%, 19%, 21%, 22%, 7.7%. It is never rounded to a fixed list.</p>
         </div>
       </div>
     </section>
 
-    <!-- How It Works -->
     <section id="how-it-works" class="section">
       <div class="container">
-        <h2 class="section-title">How It Works</h2>
-        <p style="text-align:center;color:var(--muted-foreground);font-size:1.125rem;margin-bottom:1rem;">From receipt photo to CSV in three simple steps.</p>
+        <h2 class="section-title">How the VAT Is Found</h2>
+        <div class="prose">
+          <p>If the receipt prints the VAT amount, Spendify reads it. If it prints the rate, for example “20%”, Spendify reads that too. If no rate is printed, Spendify calculates it from the total and the VAT amount.</p>
+          <p>OCR is not perfect. You see the result on a review screen before anything is saved, and you can change the VAT amount and the rate. If a receipt shows no VAT, enter 0.</p>
+        </div>
         <div class="steps-grid">
           <div class="step-card">
             <div class="step-number">1</div>
-            <h3>Upload a receipt photo</h3>
-            <p>Take a photo or upload an image. AI extracts the date, merchant, and total automatically.</p>
+            <h3>Scan the receipt</h3>
+            <p>Take a photo or upload an image. Spendify reads the date, merchant, total and VAT.</p>
           </div>
           <div class="step-card">
             <div class="step-number">2</div>
-            <h3>Review and correct the data</h3>
-            <p>Check the date, merchant name, and total amount. Fix anything the AI got wrong before exporting.</p>
+            <h3>Check the VAT</h3>
+            <p>Review the VAT amount and the VAT rate and fix anything that is wrong.</p>
           </div>
           <div class="step-card">
             <div class="step-number">3</div>
-            <h3>Export as CSV</h3>
-            <p>Download a clean CSV file and import it into Google Sheets, Excel, or any spreadsheet app.</p>
+            <h3>Export to CSV</h3>
+            <p>Download a CSV with the total, the VAT amount and the VAT rate of the receipts you select.</p>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Why CSV -->
     <section class="section section-alt">
-      <div class="container" style="text-align:center">
-        <h2 class="section-title">Why CSV?</h2>
-        <p style="font-size:1.125rem;color:var(--muted-foreground);margin-bottom:1.5rem;">CSV works everywhere.</p>
-        <ul class="check-list" style="display:inline-block;text-align:left;margin-bottom:1.5rem;">
-          <li><span class="check-icon">✓</span> Google Sheets</li>
-          <li><span class="check-icon">✓</span> Microsoft Excel</li>
-          <li><span class="check-icon">✓</span> Apple Numbers</li>
-          <li><span class="check-icon">✓</span> Custom accounting systems</li>
-        </ul>
+      <div class="container">
+        <h2 class="section-title">See the VAT Total Before You Export</h2>
         <div class="prose">
-          <p>No lock-in. No proprietary format.</p>
-          <p class="highlight">Just clean, structured expense data you control.</p>
+          <p>The export screen shows the total and the total VAT of the receipts you selected. You can filter by date — the last 7 days, the last 30 days, this month, last month or a custom range — and choose which receipts to include.</p>
+          <p>The CSV holds one row per receipt, so the net amount is the total minus the VAT: one formula in your spreadsheet.</p>
         </div>
       </div>
     </section>
 
-    <!-- Privacy -->
     <section class="section">
       <div class="container">
-        <h2 class="section-title">No Bank Connections. No Syncing.</h2>
+        <h2 class="section-title">What It Is Not</h2>
         <div class="prose">
-          <p>Spendify does not connect to financial institutions.<br>It does not access bank accounts.<br>It does not sync transactions automatically.</p>
-          <p>You upload a receipt.<br>You review the data.<br>You choose what to export.</p>
-          <p class="highlight"><strong>That's it.</strong></p>
+          <p>Spendify captures the VAT on your receipts and exports it. It is not accounting software, it does not prepare or file VAT returns, and it does not give tax advice. It does not connect to your bank either: you upload a receipt, review the data and choose what to export.</p>
         </div>
       </div>
     </section>
 
-    <!-- Who It's For -->
-    <section class="section section-alt">
-      <div class="container">
-        <h2 class="section-title">Built For</h2>
-        <ul class="check-list" style="max-width:36rem;margin:0 auto 1.5rem;">
-          <li><span class="check-icon">✓</span> Freelancers tracking expenses in spreadsheets</li>
-          <li><span class="check-icon">✓</span> Small business owners who don't need full accounting software</li>
-          <li><span class="check-icon">✓</span> People who want receipt-to-CSV, not a finance suite</li>
-        </ul>
-        <p style="text-align:center;color:var(--muted-foreground);font-style:italic;">Not built for replacing full bookkeeping software.</p>
-      </div>
-    </section>
-
-    <!-- FAQ -->
     <section class="section section-alt">
       <div class="container faq-section">
         <h2 class="section-title">Frequently asked questions</h2>
 
         <article class="faq-item">
-          <h3>What columns does the receipt CSV contain?</h3>
-          <p>Each row is one receipt, with eight columns: Date, Merchant, Total, VAT, VAT Rate, Category, Notes and Receipt ID. You can open the file in Excel or import it into Google Sheets or any other spreadsheet app.</p>
+          <h3>Which VAT rates does Spendify support?</h3>
+          <p>Any rate from 0 to 100 percent, for example 20%, 19%, 21%, 22% or 7.7%. The rate on each receipt is kept as it was detected or as you enter it, and it is never rounded to a fixed list.</p>
         </article>
 
         <article class="faq-item">
-          <h3>Is the data extracted automatically?</h3>
-          <p>The date, merchant and amounts are read from the photo automatically, but not always perfectly. You can review each receipt and correct anything that looks wrong before you export.</p>
+          <h3>Is the VAT read automatically?</h3>
+          <p>Usually, when it is printed on the receipt. Spendify reads the VAT amount and, if the receipt prints a rate, the rate. If no rate is printed, it calculates one from the total and the VAT amount. The result is not always perfect, so you check it before it is saved.</p>
         </article>
 
         <article class="faq-item">
-          <h3>Can I export only some of my receipts?</h3>
-          <p>Yes. You choose which receipts to include and can filter them by date: the last 7 days, the last 30 days, this month, last month or a custom date range.</p>
+          <h3>Does the CSV include the net amount?</h3>
+          <p>No. The CSV has the total (VAT included), the VAT amount and the VAT rate, next to the date, merchant, category, notes and receipt ID. The net amount is the total minus the VAT, one formula in your spreadsheet.</p>
         </article>
 
         <article class="faq-item">
-          <h3>Does Spendify connect to my bank account?</h3>
-          <p>No. Spendify does not connect to banks or financial institutions and does not sync transactions. You upload a receipt, review the data and choose what to export.</p>
+          <h3>Does it work with currencies other than the euro?</h3>
+          <p>The app shows amounts in euros. Spendify does not convert currencies, and the CSV contains plain numbers without a currency symbol.</p>
+        </article>
+
+        <article class="faq-item">
+          <h3>Does Spendify prepare or file my VAT return?</h3>
+          <p>No. Spendify captures the VAT on each receipt and exports it. It is not accounting software and does not give tax advice. Your VAT return stays in your own tools.</p>
         </article>
 
         <article class="faq-item">
@@ -442,31 +421,26 @@
       </div>
     </section>
 
-    <!-- Internal Links -->
     <section class="section">
       <div class="container" style="text-align:center">
-        <p style="font-size:1.125rem;color:var(--muted-foreground);margin-bottom:1rem;">Looking to create YNAB transactions instead? <a href="/ynab-receipt-scanner/" class="text-link">See how Spendify works with YNAB.</a></p>
-        <p style="color:var(--muted-foreground);margin-bottom:1rem;">Need the VAT on each receipt? <a href="/receipt-scanner-vat/" class="text-link">See how Spendify captures VAT.</a></p>
+        <p style="font-size:1.125rem;color:var(--muted-foreground);margin-bottom:1rem;">Want the whole file? <a href="/receipt-to-csv/" class="text-link">Convert receipt photos to a spreadsheet or CSV.</a></p>
+        <p style="color:var(--muted-foreground);margin-bottom:1rem;">Budgeting in YNAB? <a href="/ynab-receipt-scanner/" class="text-link">See how Spendify sends receipts to YNAB.</a></p>
         <p style="color:var(--muted-foreground);"><a href="/" class="text-link">Back to homepage</a></p>
       </div>
     </section>
 
-    <!-- Final CTA -->
     <section class="cta-section">
       <div class="container">
-        <h2>Make Receipt Entry Frictionless</h2>
+        <h2>Stop Retyping the VAT</h2>
         <a href="https://app.spendifyapp.com/login" class="btn btn-cta" target="_blank" rel="noopener noreferrer">Try Spendify →</a>
-        <p>Start with one receipt. Export to CSV instantly.</p>
+        <p>Start with one receipt. 14-day free trial, no credit card required.</p>
       </div>
     </section>
   </main>
 
   <footer class="footer">
-      <!-- Trailing slash matters: /ynab-receipts is 301'd to /ynab-receipts/
-           by the CloudFront router, so linking without it wastes a hop on
-           every internal click and crawl. -->
-      <p>&copy; 2026 Spendify. <a href="/">Home</a> · <a href="/ynab-receipts/">YNAB Receipts</a></p>
-        <p style="max-width:48rem;margin:0.75rem auto 0;font-size:0.75rem">We are not affiliated, associated, or in any way officially connected with YNAB or any of its subsidiaries or affiliates. The official YNAB website can be found at <a href="https://www.ynab.com" target="_blank" rel="noopener noreferrer">https://www.ynab.com</a>. The names YNAB and You Need A Budget, as well as related names, tradenames, marks, trademarks, emblems, and images are registered trademarks of YNAB.</p>
+      <p>&copy; 2026 Spendify. <a href="/">Home</a> · <a href="/receipt-to-csv/">Receipt to CSV</a> · <a href="/ynab-receipt-scanner/">Receipt Scanner for YNAB</a></p>
+      <p style="max-width:48rem;margin:0.75rem auto 0;font-size:0.75rem">We are not affiliated, associated, or in any way officially connected with YNAB or any of its subsidiaries or affiliates. The official YNAB website can be found at <a href="https://www.ynab.com" target="_blank" rel="noopener noreferrer">https://www.ynab.com</a>. The names YNAB and You Need A Budget, as well as related names, tradenames, marks, trademarks, emblems, and images are registered trademarks of YNAB.</p>
   </footer>
 </body>
 </html>
