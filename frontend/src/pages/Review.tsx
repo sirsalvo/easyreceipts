@@ -3,7 +3,13 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { COMMON_VAT_RATES, normalizeVatRateInput } from '@/lib/vatRate';
+import {
+  COMMON_VAT_RATES,
+  inferVatRate,
+  normalizeVatRateInput,
+  parseVatAmountInput,
+  suggestVatRate,
+} from '@/lib/vatRate';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -67,12 +73,14 @@ const Review = () => {
     date: '',
     total: '',
     payee: '',
-    vat: '',
-    vatRate: '22',
+    vat: '0',
+    vatRate: '0',
     category: '',
     notes: '',
   });
   const [errors, setErrors] = useState<FormErrors>({});
+  // Once the rate came from the scan or was typed by the user, typing an amount no longer rewrites it.
+  const [vatRateLocked, setVatRateLocked] = useState(false);
   const [showFullImage, setShowFullImage] = useState(false);
 
   // Check if receipt is a draft (can be deleted)
@@ -120,6 +128,7 @@ const Review = () => {
         const normalized = normalizeReceiptResponse(mergedResponse);
         console.log('Normalized:', normalized);
         setReceipt(normalized);
+        setVatRateLocked(!!normalized.vatRate);
 
         // Prefill form with extracted/confirmed values
         // Category is a simple string from the API response
@@ -129,8 +138,9 @@ const Review = () => {
           date: normalized.date || '',
           total: normalized.total !== null ? String(normalized.total).replace('.', ',') : '',
           payee: normalized.payee || '',
-          vat: normalized.vat !== null ? String(normalized.vat).replace('.', ',') : '',
-          vatRate: normalized.vatRate || '22',
+          // A scan that found no VAT is not an error: default to no VAT, at a rate of 0.
+          vat: normalized.vat !== null ? String(normalized.vat).replace('.', ',') : '0',
+          vatRate: normalized.vatRate || inferVatRate(normalized.total, normalized.vat) || '0',
           category: rawCategory || '',
           notes: normalized.notes || '',
         });
@@ -166,12 +176,14 @@ const Review = () => {
       newErrors.payee = 'Payee is required';
     }
 
-    const vatNum = parseFloat(formData.vat.replace(',', '.'));
-    if (formData.vat.trim() === '' || isNaN(vatNum)) {
-      newErrors.vat = 'Valid VAT amount is required';
+    // VAT is optional: an empty amount means 0, and then so does the rate.
+    const vatNum = parseVatAmountInput(formData.vat);
+    if (vatNum === null) {
+      newErrors.vat = 'Enter a number, or 0 if the receipt shows no VAT';
     }
 
-    if (normalizeVatRateInput(formData.vatRate) === null) {
+    const rateBlank = formData.vatRate.trim() === '';
+    if (rateBlank ? !!vatNum && vatNum > 0 : normalizeVatRateInput(formData.vatRate) === null) {
       newErrors.vatRate = 'Enter a VAT rate between 0 and 100';
     }
 
@@ -182,7 +194,15 @@ const Review = () => {
   };
 
   const handleInputChange = (field: keyof FormData, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === 'vatRate') setVatRateLocked(true);
+    setFormData((prev) => {
+      const next = { ...prev, [field]: value };
+      if (!vatRateLocked && (field === 'vat' || field === 'total')) {
+        const suggested = suggestVatRate(next.total, next.vat);
+        if (suggested !== null) next.vatRate = suggested;
+      }
+      return next;
+    });
     // Clear error when user starts typing
     if (errors[field as keyof FormErrors]) {
       setErrors((prev) => ({ ...prev, [field]: undefined }));
@@ -209,8 +229,8 @@ const Review = () => {
         payee: formData.payee.trim(),
         date: formData.date,
         total: parseFloat(formData.total.replace(',', '.')),
-        vat: parseFloat(formData.vat.replace(',', '.')),
-        vatRate: normalizeVatRateInput(formData.vatRate) ?? formData.vatRate,
+        vat: parseVatAmountInput(formData.vat) ?? 0,
+        vatRate: normalizeVatRateInput(formData.vatRate) ?? '0',
         category: formData.category || null,
         notes: formData.notes.trim(),
       };
@@ -420,7 +440,7 @@ const Review = () => {
             {/* VAT Amount */}
             <div className="space-y-2">
               <Label htmlFor="vat" className={errors.vat ? 'text-destructive' : ''}>
-                VAT Amount *
+                VAT Amount
               </Label>
               <Input
                 id="vat"
@@ -429,17 +449,20 @@ const Review = () => {
                 placeholder="0,00"
                 value={formData.vat}
                 onChange={(e) => handleInputChange('vat', e.target.value)}
+                onFocus={(e) => e.target.select()}
                 className={errors.vat ? 'border-destructive' : ''}
               />
-              {errors.vat && (
+              {errors.vat ? (
                 <p className="text-xs text-destructive">{errors.vat}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Leave 0 if the receipt shows no VAT.</p>
               )}
             </div>
 
             {/* VAT Rate: any rate, the suggestions are only shortcuts */}
             <div className="space-y-2">
               <Label htmlFor="vatRate" className={errors.vatRate ? 'text-destructive' : ''}>
-                VAT Rate (%) *
+                VAT Rate (%)
               </Label>
               <Input
                 id="vatRate"

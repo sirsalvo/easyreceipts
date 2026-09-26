@@ -10,7 +10,14 @@
  *     node --experimental-strip-types test/test_vat_rate.mjs
  */
 import assert from 'node:assert/strict';
-import { COMMON_VAT_RATES, normalizeVatRateInput, parseVatRate } from '../frontend/src/lib/vatRate.ts';
+import {
+  COMMON_VAT_RATES,
+  inferVatRate,
+  normalizeVatRateInput,
+  parseVatAmountInput,
+  parseVatRate,
+  suggestVatRate,
+} from '../frontend/src/lib/vatRate.ts';
 
 const cases = [];
 const test = (name, fn) => cases.push([name, fn]);
@@ -70,6 +77,39 @@ test('the suggestions cover the main rates in use', () => {
   for (const rate of ['0', '4', '5', '10', '19', '20', '21', '22']) {
     assert.ok(COMMON_VAT_RATES.includes(rate), `${rate} missing from suggestions`);
   }
+});
+
+test('a rate is inferred from total and VAT, with the same window as the backend', () => {
+  assert.equal(inferVatRate(12.2, 2.2), '22');
+  assert.equal(inferVatRate(12, 2), '20');
+  assert.equal(inferVatRate(2.97, 0.27), '10');
+  for (const [total, vat] of [[100, 0], [null, 2], [2, null], [5, 5], [100, 60], [100, 0.1]]) {
+    assert.equal(inferVatRate(total, vat), '', `${total}/${vat} is not a plausible rate`);
+  }
+});
+
+test('typing the amounts pre-fills the rate', () => {
+  assert.equal(suggestVatRate('12,20', '2,20'), '22');
+  assert.equal(suggestVatRate('12,00', '2,00'), '20');
+});
+
+test('no VAT typed means no VAT: rate 0', () => {
+  assert.equal(suggestVatRate('12,20', ''), '0');
+  assert.equal(suggestVatRate('12,20', '0'), '0');
+  assert.equal(suggestVatRate('', ''), '0');
+});
+
+test('when there is nothing sensible to suggest the field is left alone', () => {
+  assert.equal(suggestVatRate('', '2'), null);
+  assert.equal(suggestVatRate('12', 'abc'), null);
+});
+
+test('an empty VAT amount is accepted as 0; junk is not', () => {
+  assert.equal(parseVatAmountInput(''), 0);
+  assert.equal(parseVatAmountInput('   '), 0);
+  assert.equal(parseVatAmountInput('0'), 0);
+  assert.equal(parseVatAmountInput('2,20'), 2.2);
+  assert.equal(parseVatAmountInput('abc'), null);
 });
 
 let failures = 0;

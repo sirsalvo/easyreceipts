@@ -36,3 +36,32 @@ export const normalizeVatRateInput = (raw: string): string | null => {
   if (rate > 100) return null;
   return String(rate);
 };
+
+const toNumber = (text: string): number | null => {
+  const n = parseFloat(text.replace(',', '.'));
+  return Number.isFinite(n) ? n : null;
+};
+
+// Rate implied by a total (VAT included) and its VAT amount, or '' when the two
+// do not describe a plausible rate. Same 0.5-30% window the backend uses.
+export const inferVatRate = (total: number | null, vat: number | null): string => {
+  if (total === null || vat === null || vat <= 0 || total <= vat) return '';
+  const rate = (vat / (total - vat)) * 100;
+  if (rate < 0.5 || rate > 30) return '';
+  return parseVatRate(rate);
+};
+
+// The rate to pre-fill while the user types the amounts, or null to leave the
+// field alone. An empty VAT amount means "no VAT": 0, at a rate of 0.
+export const suggestVatRate = (totalText: string, vatText: string): string | null => {
+  const vat = toNumber(vatText.trim() === '' ? '0' : vatText);
+  if (vat === null) return null;
+  if (vat <= 0) return '0';
+  return inferVatRate(toNumber(totalText), vat) || null;
+};
+
+// VAT amount typed in the form: empty means 0, anything else must be a number.
+export const parseVatAmountInput = (text: string): number | null => {
+  if (text.trim() === '') return 0;
+  return toNumber(text);
+};

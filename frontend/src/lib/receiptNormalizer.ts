@@ -205,7 +205,7 @@ export const normalizeReceiptResponse = (response: unknown): NormalizedReceipt =
   const payee = (getField('payee', ['vendor', 'merchant', 'store', 'storeName']) as string) || '';
   const vat = parseNumber(getField('vat', ['vat_amount', 'tax', 'tax_raw', 'vatAmount', 'taxAmount']));
   const vatRate =
-    parseVatRate(getField('vatRate', ['vat_rate', 'vat_rate_raw', 'taxRate', 'tax_rate'])) || '22';
+    parseVatRate(getField('vatRate', ['vat_rate', 'vat_rate_raw', 'taxRate', 'tax_rate']));
   const category = (getField('category', ['type', 'expenseType', 'expenseCategory']) as string) || '';
   const categoryId = (getField('categoryId', ['category_id', 'internalCategory', 'internal_category']) as string) || '';
   const notes = (getField('notes', ['description', 'memo', 'comment']) as string) || '';
