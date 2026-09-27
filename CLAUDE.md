@@ -338,6 +338,13 @@ unlimited". L'`offers.description` della home (generato da
 `prerender_landing.mjs`) è coerente. Verificato live: zero occorrenze di
 "14-day" su tutte le pagine pubbliche.
 
+**Sezione Pricing visibile sulla home (2026-09-27).** Prima il prezzo era solo
+nel JSON-LD (invisibile a chi legge la pagina). Aggiunto `Pricing.tsx` nel
+repo Lovable (`~/spendify-landing-source/...`, componente tra
+`YnabIntegration` e `Footer`, link in header e footer): due card, Free (€0,
+5 scontrini/mese) e Unlimited (€4,99/mese). Le funzionalità sono le stesse su
+entrambi i piani, cambia solo il numero di scontrini mensili.
+
 ---
 
 ## 6. Lavoro aperto, per priorità
