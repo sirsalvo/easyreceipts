@@ -6,6 +6,7 @@ import time
 from typing import Any, Dict, Optional
 
 import boto3
+from boto3.dynamodb.conditions import Attr
 import stripe
 
 from ssm_cache import get_param, get_env_param_name
@@ -18,6 +19,25 @@ def _users_table():
     if not name:
         raise RuntimeError("USERS_TABLE env var missing")
     return dynamodb.Table(name)
+
+
+def _find_user_id_by_customer_id(customer_id: Optional[str]) -> Optional[str]:
+    """
+    Fallback for Stripe objects with no metadata.userId: subscriptions created
+    before create_checkout_session started setting subscription_data.metadata
+    (every subscription that existed before this fix, including any real one
+    already in prod). A full table scan is fine at this table's size (single
+    digits of users); if it ever grows into the thousands, add a GSI on
+    stripeCustomerId instead of scanning on every webhook event.
+    """
+    if not customer_id:
+        return None
+    resp = _users_table().scan(
+        FilterExpression=Attr("stripeCustomerId").eq(customer_id),
+        ProjectionExpression="userId",
+    )
+    items = resp.get("Items") or []
+    return items[0]["userId"] if items else None
 
 
 def _stripe_init():
@@ -145,16 +165,7 @@ def handle_stripe_webhook(event: Dict[str, Any], origin: str, json_fn) -> Dict[s
         subscription_id = data_obj.get("subscription")
         customer_id = data_obj.get("customer")
 
-        user_id = user_id_from_metadata(data_obj)
-
-        # Best-effort: retrieve subscription to get metadata.userId
-        if not user_id and subscription_id:
-            try:
-                sub = stripe.Subscription.retrieve(subscription_id)
-                user_id = (sub.get("metadata") or {}).get("userId")
-            except Exception as e:
-                print("Failed to retrieve subscription for metadata lookup:", repr(e))
-                user_id = None
+        user_id = user_id_from_metadata(data_obj) or _find_user_id_by_customer_id(customer_id)
 
         if user_id:
             _update_user(user_id, customer_id=customer_id, subscription_id=subscription_id, status="active")
@@ -167,17 +178,21 @@ def handle_stripe_webhook(event: Dict[str, Any], origin: str, json_fn) -> Dict[s
 
         return json_fn(200, {"received": True}, origin)
 
-    # 3) Subscription deleted: set expired (requires userId in metadata; if not present we log)
+    # 3) Subscription deleted (cancelled immediately, or reached the end of a
+    # cancel-at-period-end window - Stripe fires this either way): fall back
+    # to the free tier. "expired" is what entitlements.py already treats the
+    # same as a never-subscribed user (the monthly free-tier quota), not a
+    # hard block, so this is the correct downgrade target on its own.
     if event_type == "customer.subscription.deleted":
         subscription_id = data_obj.get("id")
         customer_id = data_obj.get("customer")
-        user_id = user_id_from_metadata(data_obj)
+        user_id = user_id_from_metadata(data_obj) or _find_user_id_by_customer_id(customer_id)
 
         if user_id:
             _update_user(user_id, customer_id=customer_id, subscription_id=subscription_id, status="expired")
-            print(f"User expired via customer.subscription.deleted: userId={user_id}")
+            print(f"User downgraded to the free tier via customer.subscription.deleted: userId={user_id}")
         else:
-            print(f"customer.subscription.deleted received but missing metadata.userId (subscription_id={subscription_id})")
+            print(f"customer.subscription.deleted: could not resolve userId (subscription_id={subscription_id}, customer_id={customer_id})")
 
         return json_fn(200, {"received": True}, origin)
 

@@ -95,6 +95,10 @@ def test_checkout_sends_the_user_and_the_price():
     assert p["client_reference_id"] == "user-1" and p["metadata"] == {"userId": "user-1"}
     assert p["customer_email"] == "a@example.com" and "customer" not in p
     assert p["success_url"].endswith("/settings?billing=success")
+    # Without this, the Subscription Stripe creates carries no metadata at
+    # all (Stripe does not copy the session's), so a later cancellation can
+    # never be traced back to a user - see test_stripe_webhook.py.
+    assert p["subscription_data"] == {"metadata": {"userId": "user-1"}}
 
 
 def test_an_existing_customer_is_reused_instead_of_asking_for_an_email():

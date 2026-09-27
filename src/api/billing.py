@@ -112,6 +112,14 @@ def create_checkout_session(event: Dict[str, Any], json_fn, origin: str) -> Dict
         # Helps you map session back to the user
         "client_reference_id": user_id,
         "metadata": {"userId": user_id},
+        # Stripe does NOT copy the session's metadata onto the Subscription it
+        # creates. Without this, the Subscription object the webhook receives
+        # on customer.subscription.deleted has no metadata.userId, so a
+        # cancellation can never be traced back to a user and the account
+        # stays "active" forever. This makes every future subscription carry
+        # its own userId; _find_user_id_by_customer_id in stripe_webhook.py
+        # is the fallback for subscriptions created before this line existed.
+        "subscription_data": {"metadata": {"userId": user_id}},
         # Ask for email if missing, otherwise keep it consistent
         "customer_email": email if email else None,
         # Optional: allow promo codes if you want
