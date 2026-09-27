@@ -23,14 +23,22 @@ os.environ.update(
     RECEIPTS_TABLE="test-receipts",
     UPLOADS_BUCKET="test-uploads",
     CORS_ORIGINS="https://app.spendifyapp.com",
+    USERS_TABLE="test-users",
+    USAGE_TABLE="test-usage",
     AWS_DEFAULT_REGION="eu-central-1",
 )
 
 import app  # noqa: E402
+import entitlements  # noqa: E402
 
 ORIGIN = "https://app.spendifyapp.com"
 signed = []
 stored = []
+
+# Content-type handling is the concern of this file; the free-tier quota
+# (entitlements.py) has its own tests. Stub an always-allowed active user so
+# a POST here never gets rejected for a reason unrelated to content type.
+entitlements.get_or_create_user = lambda user_id, email: {"status": entitlements.STATUS_ACTIVE}
 
 
 class FakeS3:

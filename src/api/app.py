@@ -88,7 +88,7 @@ ALLOWED_UPLOAD_TYPES = ("image/jpeg", "image/png")
 
 
 def _get_me(event: Dict[str, Any], origin: str) -> Dict[str, Any]:
-    from entitlements import get_or_create_user
+    from entitlements import STATUS_ACTIVE, get_or_create_user, get_usage
 
     claims = _claims(event)
     sub = claims.get("sub")
@@ -108,6 +108,8 @@ def _get_me(event: Dict[str, Any], origin: str) -> Dict[str, Any]:
             "trialStartedAt": user.get("trialStartedAt"),
             "trialEndsAt": c["trialEndsAt"],
             "daysRemaining": c["daysRemaining"],
+            # Unlimited for paying users: omit rather than report a limit that doesn't apply.
+            "freeTier": None if user["status"] == STATUS_ACTIVE else get_usage(sub),
         },
         origin,
     )

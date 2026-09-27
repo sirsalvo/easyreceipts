@@ -14,6 +14,17 @@ export const setBaseUrl = (url: string): void => {
   localStorage.setItem('spendify_base_url', url);
 };
 
+export class ApiError extends Error {
+  code?: string;
+  details?: Record<string, unknown>;
+
+  constructor(message: string, code?: string, details?: Record<string, unknown>) {
+    super(message);
+    this.code = code;
+    this.details = details;
+  }
+}
+
 interface ApiOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   body?: unknown;
@@ -114,7 +125,17 @@ export const apiRequest = async <T>(
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || `API error: ${response.status}`);
+    // Backend errors are JSON ({ error, message, ... }); show the human
+    // message instead of the raw body, and keep the extra fields (limit,
+    // used, resetsAt for QUOTA_EXCEEDED) for callers that want them.
+    try {
+      const parsed = JSON.parse(errorText);
+      const err = new ApiError(parsed.message || errorText, parsed.error, parsed);
+      throw err;
+    } catch (parseError) {
+      if (parseError instanceof ApiError) throw parseError;
+      throw new Error(errorText || `API error: ${response.status}`);
+    }
   }
 
   return response.json();
@@ -358,9 +379,19 @@ export const updateReceipt = async (
 
 // ============= User Status & Billing API =============
 
+export interface FreeTierUsage {
+  limit: number;
+  used: number;
+  remaining: number;
+  period: string;
+  resetsAt: string;
+}
+
 export interface UserStatusResponse {
   status: 'trial' | 'active' | 'expired';
   daysRemaining?: number;
+  // null for active subscribers (unlimited), absent on older API responses.
+  freeTier?: FreeTierUsage | null;
 }
 
 export const getUserStatus = async (): Promise<UserStatusResponse> => {

@@ -50,6 +50,7 @@ const Settings = () => {
           setUserState({
             status: data.status,
             daysRemaining: data.daysRemaining ?? null,
+            freeTier: data.freeTier ?? null,
             loading: false,
           });
           setActivationState('success');

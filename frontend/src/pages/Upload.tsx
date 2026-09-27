@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
-import { createReceipt, uploadToPresignedUrl } from '@/lib/api';
+import { ApiError, createReceipt, uploadToPresignedUrl } from '@/lib/api';
 import { isAuthenticated } from '@/lib/auth';
 import { Upload as UploadIcon, Camera, Image, ArrowLeft, Loader2 } from 'lucide-react';
 import MobileLayout from '@/components/MobileLayout';
@@ -69,11 +69,13 @@ const Upload = () => {
       // Navigate to processing page
       navigate(`/processing/${receiptId}`);
     } catch (error) {
+      const quotaExceeded = error instanceof ApiError && error.code === 'QUOTA_EXCEEDED';
       toast({
-        title: 'Upload failed',
+        title: quotaExceeded ? 'Free plan limit reached' : 'Upload failed',
         description: error instanceof Error ? error.message : 'An error occurred',
         variant: 'destructive',
       });
+      if (quotaExceeded) navigate('/settings');
     } finally {
       setIsUploading(false);
     }

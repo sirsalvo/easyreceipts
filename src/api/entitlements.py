@@ -1,4 +1,5 @@
 # src/api/entitlements.py
+import datetime as dt
 import os
 import time
 import math
@@ -13,10 +14,10 @@ STATUS_TRIAL = "trial"
 STATUS_ACTIVE = "active"
 STATUS_EXPIRED = "expired"
 
-TRIAL_EXPIRED_RESPONSE = {
-    "error": "TRIAL_EXPIRED",
-    "message": "Your free trial has ended. Please activate a subscription to continue."
-}
+# `trial`/`expired` no longer block anything: every non-active user gets the
+# monthly free-tier quota (see consume_quota) instead of a hard cutoff after
+# TRIAL_DAYS. The statuses and trialStartedAt are kept as-is (existing users
+# need no migration); STATUS_EXPIRED is now informational only.
 
 UNAUTHORIZED_RESPONSE = {
     "error": "UNAUTHORIZED",
@@ -35,10 +36,37 @@ def _trial_days() -> int:
         return 14
 
 
+def _free_tier_limit() -> int:
+    try:
+        return int(os.getenv("FREE_TIER_MONTHLY_LIMIT", "5"))
+    except Exception:
+        return 5
+
+
+def _current_period(now: Optional[int] = None) -> str:
+    """Calendar month in UTC, e.g. "2026-09". The quota resets when this changes."""
+    ts = now if now is not None else _now()
+    return dt.datetime.fromtimestamp(ts, dt.timezone.utc).strftime("%Y-%m")
+
+
+def _period_ends_at(period: str) -> str:
+    """ISO timestamp of the next reset (UTC midnight on the 1st of next month)."""
+    year, month = (int(x) for x in period.split("-"))
+    year, month = (year + 1, 1) if month == 12 else (year, month + 1)
+    return dt.datetime(year, month, 1, tzinfo=dt.timezone.utc).isoformat()
+
+
 def _users_table():
     name = os.getenv("USERS_TABLE")
     if not name:
         raise RuntimeError("USERS_TABLE env var missing")
+    return dynamodb.Table(name)
+
+
+def _usage_table():
+    name = os.getenv("USAGE_TABLE")
+    if not name:
+        raise RuntimeError("USAGE_TABLE env var missing")
     return dynamodb.Table(name)
 
 
@@ -107,14 +135,66 @@ def get_or_create_user(user_id: str, email: Optional[str]) -> Dict[str, Any]:
     return item
 
 
-def is_premium_endpoint(method: str, path: str) -> bool:
-    if path == "/me":
-        return False
+def get_usage(user_id: str) -> Dict[str, Any]:
+    """Current month's usage, without consuming any of it. For display (GET /me)."""
+    limit = _free_tier_limit()
+    period = _current_period()
+    resp = _usage_table().get_item(Key={"PK": f"USER#{user_id}", "SK": f"USAGE#{period}"})
+    used = int((resp.get("Item") or {}).get("count", 0))
+    return {
+        "limit": limit,
+        "used": used,
+        "remaining": max(0, limit - used),
+        "period": period,
+        "resetsAt": _period_ends_at(period),
+    }
 
-    if path.startswith("/exports/"):
-        return True
 
-    return False
+def consume_quota(user_id: str) -> Dict[str, Any]:
+    """
+    Atomically increments this month's usage counter, but only if it is still
+    under the limit: the condition and the increment happen in one DynamoDB
+    operation, so two concurrent requests cannot both slip through (each one
+    is a separate atomic attempt; DynamoDB serializes them).
+
+    Returns get_usage()'s shape plus "allowed": whether this call was counted.
+    """
+    limit = _free_tier_limit()
+    period = _current_period()
+    key = {"PK": f"USER#{user_id}", "SK": f"USAGE#{period}"}
+
+    try:
+        resp = _usage_table().update_item(
+            Key=key,
+            UpdateExpression="SET #c = if_not_exists(#c, :zero) + :one, updatedAt = :u",
+            ConditionExpression="attribute_not_exists(#c) OR #c < :limit",
+            ExpressionAttributeNames={"#c": "count"},
+            ExpressionAttributeValues={":zero": 0, ":one": 1, ":limit": limit, ":u": _now()},
+            ReturnValues="UPDATED_NEW",
+        )
+        used = int(resp["Attributes"]["count"])
+        allowed = True
+    except ClientError as e:
+        if e.response.get("Error", {}).get("Code") != "ConditionalCheckFailedException":
+            raise
+        used = limit
+        allowed = False
+
+    return {
+        "allowed": allowed,
+        "limit": limit,
+        "used": used,
+        "remaining": max(0, limit - used),
+        "period": period,
+        "resetsAt": _period_ends_at(period),
+    }
+
+
+def is_metered_endpoint(method: str, path: str) -> bool:
+    # Where the free-tier quota is enforced: receipt creation, i.e. the point
+    # that hands out a presigned upload URL. Blocking here means a request
+    # over quota never reaches Textract, so it never costs anything.
+    return method == "POST" and path == "/receipts"
 
 
 def entitlement_guard(event: Dict[str, Any], origin: str, json_fn):
@@ -125,7 +205,7 @@ def entitlement_guard(event: Dict[str, Any], origin: str, json_fn):
     )
     path = event.get("rawPath") or "/"
 
-    if not is_premium_endpoint(method, path):
+    if not is_metered_endpoint(method, path):
         return None
 
     user_id, email = _user_id_and_email(event)
@@ -133,12 +213,26 @@ def entitlement_guard(event: Dict[str, Any], origin: str, json_fn):
         return json_fn(401, UNAUTHORIZED_RESPONSE, origin)
 
     user = get_or_create_user(user_id, email)
-    status = user.get("status")
-
-    if status == STATUS_ACTIVE:
+    if user.get("status") == STATUS_ACTIVE:
         return None
 
-    if status == STATUS_TRIAL and not user["_computed"]["expired"]:
+    usage = consume_quota(user_id)
+    if usage["allowed"]:
         return None
 
-    return json_fn(403, TRIAL_EXPIRED_RESPONSE, origin)
+    # Not 401/403: the frontend treats those as an expired app session and
+    # logs the user out, which is wrong for "you've used your free receipts".
+    return json_fn(
+        402,
+        {
+            "error": "QUOTA_EXCEEDED",
+            "message": (
+                f"You've used all {usage['limit']} free receipts this month. "
+                "Upgrade to keep scanning, or wait for your quota to reset."
+            ),
+            "limit": usage["limit"],
+            "used": usage["used"],
+            "resetsAt": usage["resetsAt"],
+        },
+        origin,
+    )

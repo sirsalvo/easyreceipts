@@ -1,15 +1,19 @@
+import type { FreeTierUsage } from './api';
+
 // Global store for user subscription status
 export type UserStatus = 'trial' | 'active' | 'expired' | null;
 
 interface UserState {
   status: UserStatus;
   daysRemaining: number | null;
+  freeTier: FreeTierUsage | null;
   loading: boolean;
 }
 
 let state: UserState = {
   status: null,
   daysRemaining: null,
+  freeTier: null,
   loading: false,
 };
 
@@ -31,6 +35,7 @@ export const clearUserState = () => {
   state = {
     status: null,
     daysRemaining: null,
+    freeTier: null,
     loading: false,
   };
   notify();

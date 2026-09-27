@@ -6,7 +6,7 @@ import { createCheckoutSession } from '@/lib/api';
 import { toast } from '@/hooks/use-toast';
 
 const BillingBanner = () => {
-  const { status, daysRemaining, loading } = useUserStatus();
+  const { status, freeTier, loading } = useUserStatus();
   const [redirecting, setRedirecting] = useState(false);
 
   const handleActivateSubscription = async () => {
@@ -32,40 +32,44 @@ const BillingBanner = () => {
     }
   };
 
-  // Don't show banner if loading, active, or no status yet
-  if (loading || status === 'active' || status === null) {
+  // Don't show banner if loading, active (unlimited), or usage hasn't loaded yet
+  if (loading || status === 'active' || !freeTier) {
     return null;
   }
 
-  const isExpired = status === 'expired';
+  const quotaUsedUp = freeTier.remaining <= 0;
+  const resetDate = new Date(freeTier.resetsAt).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+  });
 
   return (
     <div
       className={`px-4 py-3 flex items-center justify-between gap-3 ${
-        isExpired
+        quotaUsedUp
           ? 'bg-destructive/10 border-b border-destructive/30'
           : 'bg-amber-500/10 border-b border-amber-500/30'
       }`}
     >
       <div className="flex items-center gap-2 flex-1 min-w-0">
-        {isExpired ? (
+        {quotaUsedUp ? (
           <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
         ) : (
           <CreditCard className="h-4 w-4 text-amber-600 shrink-0" />
         )}
         <span
           className={`text-xs font-medium truncate ${
-            isExpired ? 'text-destructive' : 'text-amber-700'
+            quotaUsedUp ? 'text-destructive' : 'text-amber-700'
           }`}
         >
-          {isExpired
-            ? 'Your free trial has ended. Please activate a subscription to continue.'
-            : `Free trial: ${daysRemaining} days remaining`}
+          {quotaUsedUp
+            ? `You've used all ${freeTier.limit} free receipts this month. Resets ${resetDate}.`
+            : `Free plan: ${freeTier.used} of ${freeTier.limit} receipts used this month`}
         </span>
       </div>
       <Button
         size="sm"
-        variant={isExpired ? 'destructive' : 'default'}
+        variant={quotaUsedUp ? 'destructive' : 'default'}
         onClick={handleActivateSubscription}
         disabled={redirecting}
         className="shrink-0 text-xs h-7 px-2"
@@ -73,7 +77,7 @@ const BillingBanner = () => {
         {redirecting ? (
           <Loader2 className="h-3 w-3 animate-spin" />
         ) : (
-          'Activate subscription'
+          'Upgrade'
         )}
       </Button>
     </div>

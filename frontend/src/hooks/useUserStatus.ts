@@ -26,6 +26,7 @@ export const useUserStatus = () => {
       setUserState({
         status: data.status,
         daysRemaining: data.daysRemaining ?? null,
+        freeTier: data.freeTier ?? null,
         loading: false,
       });
     } catch (error) {
@@ -41,6 +42,7 @@ export const useUserStatus = () => {
   return {
     status: state.status as UserStatus,
     daysRemaining: state.daysRemaining,
+    freeTier: state.freeTier,
     loading: state.loading,
     fetchStatus,
     clearStatus,

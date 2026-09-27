@@ -378,6 +378,9 @@ Resources:
           USERS_TABLE: !Ref UsersTable
           USER_CATEGORIES_TABLE: !Ref UserCategoriesTable
           TRIAL_DAYS: "14"
+          # Free-tier receipts per calendar month for non-active users. See
+          # entitlements.consume_quota. Tune here, no code change needed.
+          FREE_TIER_MONTHLY_LIMIT: "5"
           UPLOADS_BUCKET: !Sub "${AppName}-${Env}-uploads-${AWS::AccountId}-${AWS::Region}"
 
           # Stripe config (recommended: SSM dynamic references)
