@@ -308,8 +308,34 @@ questo rischio, lo rende esplicito.
 5. **Poi**, non prima: correggere il bug delle disdette Stripe (sopra),
    perché con un free tier chi disdice deve ricadere sul piano gratuito.
 
-**Prossimo passo:** disegnare la soglia (quanti scontrini gratis/mese) e lo
-schema del contatore d'uso.
+**Deciso e rilasciato in produzione (2026-09-27):** soglia **5 scontrini
+gratis/mese**, si rinnova ogni mese di calendario, configurabile via
+`FREE_TIER_MONTHLY_LIMIT` (default nel template, nessun redeploy di codice per
+cambiarla). Blocco su `POST /receipts` con un `update_item` atomico
+(incrementa e verifica la soglia in una sola operazione: nessuna corsa
+critica possibile). Risposta **402** (non 401/403, che l'app tratta come
+sessione scaduta) con `limit`/`used`/`resetsAt`. `GET /me` riporta
+`freeTier: {limit, used, remaining, resetsAt}` (null per gli abbonati attivi).
+Il banner nel frontend mostra "X di 5 usati questo mese" invece del conto
+alla rovescia del trial. `entitlements.py`: `is_metered_endpoint` sostituisce
+`is_premium_endpoint` (che proteggeva solo `/exports/`, rotta inesistente).
+Nessuna migrazione per i 7 utenti esistenti: stati `trial`/`expired` restano,
+ma ora sono solo informativi.
+
+Verificato su AWS reale (dev e prod) con un utente sintetico creato e ripulito
+subito dopo: 5 concessi, il 6° bloccato con 402, un abbonato attivo senza
+limiti. `test/test_entitlements.py` (11 test) + `test/e2e_free_tier.mjs`
+(banner e toast in un browser vero, API simulate).
+
+**Trovato durante la verifica:** `luigi.lauro@gmail.com` è `active` in prod
+**senza `stripeCustomerId`** — accesso illimitato mai passato da Stripe. Non
+toccato, segnalato a Salvo il 2026-09-27.
+
+**Non ancora fatto, da valutare:** i testi della landing dicono ancora "14-day
+free trial, then €4.99/month" (home, FAQ delle 3 pagine prodotto, CTA). Con il
+piano gratuito questo non è più esatto: non c'è più un taglio a 14 giorni,
+c'è una soglia mensile per sempre. Da riscrivere quando si decide come
+comunicarlo (es. "5 free receipts/month, or €4.99/month for unlimited").
 
 ---
 
