@@ -65,13 +65,14 @@ try {
   // as a structured-data spam violation.
   html = html.replace(/,\s*"aggregateRating":\s*\{[^}]*\}/, '');
 
-  // The build declares the app as free (price 0 USD). The real plan is a
-  // 14-day trial, then EUR 4.99/month; a price of 0 is misleading markup.
+  // The build declares the app as free (price 0 USD), which is stale on two
+  // counts: there's a real price, and free is now a permanent tier (5
+  // receipts/month), not a 14-day trial that used to cut off entirely.
   const offers = `"offers": {
         "@type": "Offer",
         "price": "4.99",
         "priceCurrency": "EUR",
-        "description": "14-day free trial, then 4.99 EUR per month"
+        "description": "Free for 5 receipts a month, no credit card. Unlimited receipts for 4.99 EUR per month."
       }`;
   const beforeOffers = html;
   html = html.replace(/"offers":\s*\{[^}]*\}/, () => offers);
