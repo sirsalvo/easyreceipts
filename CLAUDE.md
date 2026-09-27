@@ -142,6 +142,12 @@ da `entitlements`: `ImportError` garantito se mai usato.
 **SSM duplicati.** Esistono sia `/spendify/prod/stripe/*` (usati) sia
 `/easyreceipts/prod/stripe/*` (orfani). Attenzione durante le rotazioni.
 
+**Secret Secrets Manager orfano — eliminato il 2026-09-27.** `ynab/token`
+(creato 2025-12-27, mai referenziato nel codice: l'OAuth YNAB usa SSM+KMS)
+costava 0,40 $/mese fissi. Cancellazione programmata per il **2026-10-27**
+(finestra di recupero 30gg): `aws secretsmanager restore-secret --secret-id
+ynab/token` se dovesse servire prima di quella data.
+
 **Nessun allarme, nessuna retention sui log.** I log group non hanno scadenza.
 Dichiararli in CFN fallisce perché esistono già: serve un resource import.
 
@@ -275,6 +281,36 @@ modifiche che toccano backend, UI e landing insieme.
   solo nel monorepo): ora è nel commit del clone, altrimenti il sync lo avrebbe
   cancellato.
 
+### Passaggio a trial → free tier + a pagamento (in corso, 2026-09-27)
+
+**Business case fatto con dati reali** (Cost Explorer, 9 mesi): Textract
+0,01 $/pagina (1,53 $ totali finora), storage 6,7 MB/scontrino → 0,00015
+$/scontrino al mese per sempre, tutto il resto (Lambda, DynamoDB, API Gateway)
+a 0 $ a questo volume. **Il costo cloud non è un vincolo**: un solo abbonato a
+4,99 €/mese (~4,665 € netti dopo Stripe) copre da ~90 (5 scontrini gratis/mese)
+a ~5 utenti gratuiti (100 scontrini gratis/mese). Servirebbero migliaia di
+utenti gratuiti prima che Textract diventi una voce di costo rilevante.
+
+**Il rischio vero: oggi non esiste alcun limite lato server.**
+`entitlements.is_premium_endpoint` protegge solo `/exports/`, rotta
+inesistente — chi ha il trial scaduto scansiona già gratis e illimitato,
+frenato solo da un banner nel frontend. Introdurre il piano gratuito non crea
+questo rischio, lo rende esplicito.
+
+**Da costruire per il piano gratuito** (non ancora iniziato):
+1. Contatore d'uso per utente/mese — `UsageMonthlyTable` esiste nel template
+   ma non è mai stata scritta né letta da nessun sorgente: da far rivivere.
+2. Applicare la soglia **prima** della chiamata a Textract, non solo
+   nell'interfaccia (altrimenti il costo si spende comunque).
+3. Reset mensile del contatore, UI per mostrare la soglia residua e upsell.
+4. Un tetto di richieste (rate limit) per limitare il danno massimo in caso
+   di abuso, indipendente dalla soglia scelta.
+5. **Poi**, non prima: correggere il bug delle disdette Stripe (sopra),
+   perché con un free tier chi disdice deve ricadere sul piano gratuito.
+
+**Prossimo passo:** disegnare la soglia (quanti scontrini gratis/mese) e lo
+schema del contatore d'uso.
+
 ---
 
 ## 6. Lavoro aperto, per priorità
@@ -292,6 +328,11 @@ webhook `customer.subscription.deleted` cerca `metadata.userId` sulla
 *subscription* → sempre assente → **chi disdice resta `active` per sempre**.
 Manca anche un fallback via `stripeCustomerId` (servirebbe una GSI) e la
 gestione di `customer.subscription.updated` e `invoice.payment_failed`.
+**Rimandato deliberatamente (decisione di Salvo, 2026-09-27):** nessun
+abbonato ha ancora disdetto, quindi il bug non ha effetto oggi. **Da
+correggere prima che arrivi la prima disdetta reale**, e comunque prima di
+introdurre il piano gratuito: con un free tier, chi disdice deve ricadere sul
+piano gratuito, non restare bloccato né restare abbonato a vita.
 
 **Il trial non blocca nulla lato server.** `entitlements.is_premium_endpoint`
 protegge solo `/exports/`, **route che non esiste**. Un utente con trial
