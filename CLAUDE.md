@@ -349,17 +349,29 @@ unlimited". L'`offers.description` della home (generato da
 log. Correzione di una riga, `test/test_billing.py` (6 test, i due sul checkout
 fallivano prima), deployato in prod con changeset (solo `ApiFunction`).
 
-**Le disdette Stripe non declassano l'utente.** `create_checkout_session` mette
-`metadata.userId` sulla *sessione*, non su `subscription_data.metadata`. Il
-webhook `customer.subscription.deleted` cerca `metadata.userId` sulla
-*subscription* → sempre assente → **chi disdice resta `active` per sempre**.
-Manca anche un fallback via `stripeCustomerId` (servirebbe una GSI) e la
-gestione di `customer.subscription.updated` e `invoice.payment_failed`.
-**Rimandato deliberatamente (decisione di Salvo, 2026-09-27):** nessun
-abbonato ha ancora disdetto, quindi il bug non ha effetto oggi. **Da
-correggere prima che arrivi la prima disdetta reale**, e comunque prima di
-introdurre il piano gratuito: con un free tier, chi disdice deve ricadere sul
-piano gratuito, non restare bloccato né restare abbonato a vita.
+**Le disdette Stripe non declassavano l'utente — risolto il 2026-09-27.**
+`create_checkout_session` mancava di `subscription_data.metadata`: Stripe non
+copia i metadata della sessione sulla subscription creata, quindi
+`customer.subscription.deleted` non trovava mai `metadata.userId`. Corretto
+in due punti: `billing.py` ora imposta anche `subscription_data.metadata`
+(vale per le subscription future), e `stripe_webhook.py` ha un fallback
+`_find_user_id_by_customer_id` (scan su `USERS_TABLE` filtrato per
+`stripeCustomerId` — va bene a questa scala, se il numero di utenti cresce
+molto serve una GSI) per le subscription già esistenti, incluso l'unico
+abbonato reale in prod. Chi disdice ora ricade su `expired`, che
+`entitlements.py` tratta come chi non si è mai abbonato: soglia gratuita
+mensile, non blocco totale.
+
+Verificato su AWS reale (dev e prod) con una richiesta webhook firmata
+davvero (HMAC calcolato con il webhook secret reale di ciascun ambiente) su
+un utente sintetico creato e ripulito subito: 200, utente declassato a
+`expired` usando solo il `customer_id` (senza metadata, lo scenario del bug).
+L'abbonato reale e il beta tester (`luigi.lauro@gmail.com`) confermati
+intatti. `test/test_stripe_webhook.py` (11 test, il fallback fallisce contro
+il codice precedente).
+
+**Non incluso in questa correzione, resta da fare:** `customer.subscription.updated`
+(es. passaggio a `past_due`) e `invoice.payment_failed` non sono gestiti.
 
 **Il trial non blocca nulla lato server.** `entitlements.is_premium_endpoint`
 protegge solo `/exports/`, **route che non esiste**. Un utente con trial
