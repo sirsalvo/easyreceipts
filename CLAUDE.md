@@ -331,11 +331,12 @@ limiti. `test/test_entitlements.py` (11 test) + `test/e2e_free_tier.mjs`
 (confermato da Salvo, 2026-09-27): beta tester a cui è stato dato accesso
 manuale. Non toccare.
 
-**Non ancora fatto, da valutare:** i testi della landing dicono ancora "14-day
-free trial, then €4.99/month" (home, FAQ delle 3 pagine prodotto, CTA). Con il
-piano gratuito questo non è più esatto: non c'è più un taglio a 14 giorni,
-c'è una soglia mensile per sempre. Da riscrivere quando si decide come
-comunicarlo (es. "5 free receipts/month, or €4.99/month for unlimited").
+**Comunicazione della landing aggiornata (2026-09-27).** Tolto "14-day free
+trial" ovunque (home, FAQ e microcopy delle 3 pagine prodotto, CTA finali):
+ora dice "free for 5 receipts a month, no credit card" + "€4.99/month for
+unlimited". L'`offers.description` della home (generato da
+`prerender_landing.mjs`) è coerente. Verificato live: zero occorrenze di
+"14-day" su tutte le pagine pubbliche.
 
 ---
 
