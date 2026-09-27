@@ -308,9 +308,10 @@ questo rischio, lo rende esplicito.
 5. **Poi**, non prima: correggere il bug delle disdette Stripe (sopra),
    perché con un free tier chi disdice deve ricadere sul piano gratuito.
 
-**Deciso e rilasciato in produzione (2026-09-27):** soglia **5 scontrini
-gratis/mese**, si rinnova ogni mese di calendario, configurabile via
-`FREE_TIER_MONTHLY_LIMIT` (default nel template, nessun redeploy di codice per
+**Deciso e rilasciato in produzione (2026-09-27):** soglia **10 scontrini
+gratis/mese** (alzata da 5 il 2026-09-27: nessun dato d'uso ancora, il costo è comunque
+irrilevante), si rinnova ogni mese di calendario, configurabile via
+`FREE_TIER_MONTHLY_LIMIT` (default 10 nel template, nessun redeploy di codice per
 cambiarla). Blocco su `POST /receipts` con un `update_item` atomico
 (incrementa e verifica la soglia in una sola operazione: nessuna corsa
 critica possibile). Risposta **402** (non 401/403, che l'app tratta come
