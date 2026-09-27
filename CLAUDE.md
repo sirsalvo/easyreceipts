@@ -327,9 +327,9 @@ subito dopo: 5 concessi, il 6° bloccato con 402, un abbonato attivo senza
 limiti. `test/test_entitlements.py` (11 test) + `test/e2e_free_tier.mjs`
 (banner e toast in un browser vero, API simulate).
 
-**Trovato durante la verifica:** `luigi.lauro@gmail.com` è `active` in prod
-**senza `stripeCustomerId`** — accesso illimitato mai passato da Stripe. Non
-toccato, segnalato a Salvo il 2026-09-27.
+**`luigi.lauro@gmail.com` è `active` senza `stripeCustomerId`, di proposito**
+(confermato da Salvo, 2026-09-27): beta tester a cui è stato dato accesso
+manuale. Non toccare.
 
 **Non ancora fatto, da valutare:** i testi della landing dicono ancora "14-day
 free trial, then €4.99/month" (home, FAQ delle 3 pagine prodotto, CTA). Con il
