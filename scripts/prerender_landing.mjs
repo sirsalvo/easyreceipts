@@ -72,7 +72,7 @@ try {
         "@type": "Offer",
         "price": "4.99",
         "priceCurrency": "EUR",
-        "description": "Free for 5 receipts a month, no credit card. Unlimited receipts for 4.99 EUR per month."
+        "description": "Free for 10 receipts a month, no credit card. Unlimited receipts for 4.99 EUR per month."
       }`;
   const beforeOffers = html;
   html = html.replace(/"offers":\s*\{[^}]*\}/, () => offers);

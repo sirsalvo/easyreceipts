@@ -38,7 +38,7 @@ def _trial_days() -> int:
 
 def _free_tier_limit() -> int:
     try:
-        return int(os.getenv("FREE_TIER_MONTHLY_LIMIT", "5"))
+        return int(os.getenv("FREE_TIER_MONTHLY_LIMIT", "10"))
     except Exception:
         return 5
 
