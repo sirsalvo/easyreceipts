@@ -527,6 +527,20 @@ convalida, ma va rilanciata):
 **Prossima rimisurazione**: non prima di metà novembre, quando la finestra
 di 3 mesi rifletterà davvero il sito corretto invece di un impasto.
 
+### IndexNow registrato (2026-10-08)
+
+Chiave `19436ff07c6ad9eca3d79d972a028a63` pubblicata su
+`spendifyapp.com/19436ff07c6ad9eca3d79d972a028a63.txt` (in `KEEP_FILES`:
+il nome del file È la chiave, perderlo significa registrarsi da capo).
+Notifica batch delle 7 pagine pubbliche inviata a `bing.com/indexnow`:
+**202 Accepted**. Propaga a Bing, Yandex, Seznam, Naver, Yep per protocollo
+condiviso — non serve ripetere per ciascuno.
+
+**Non ancora fatto**: non è agganciato a `deploy_landing.sh`, quindi le
+prossime modifiche alle pagine vanno notificate a mano (o va scritto uno
+script). Bing Webmaster Tools (il pannello, non IndexNow) richiede login
+manuale — vedi task aperto.
+
 ---
 
 ## 8. Convenzioni
