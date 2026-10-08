@@ -110,6 +110,10 @@ KEEP_FILES=(
   "og-receipt-scanner-vat.png"
   # Upstream lastmod dates are stale (2026-02-11); the repo copy is maintained.
   "sitemap.xml"
+  # IndexNow verification key (Bing/Yandex/Seznam/Naver/Yep). Not produced by
+  # the Lovable build; the filename itself is the key, so it can't be
+  # regenerated from anything - losing it means re-registering with a new key.
+  "19436ff07c6ad9eca3d79d972a028a63.txt"
 )
 
 RSYNC_EXCLUDES=()
