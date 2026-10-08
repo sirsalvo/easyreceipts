@@ -21,11 +21,20 @@
  *    answer for a moved page: Google keeps retrying and never consolidates
  *    the signals onto the new URL, whereas a 301 passes them along.
  *
+ * Found on 2026-10-08, still live: LEGACY_REDIRECTS only mapped the bare
+ * "/en"/"/en/" and "/it"/"/it/" paths, not anything nested under them.
+ * Search Console's own Controllo URL test on www.spendifyapp.com/en/index.html
+ * and /it/index.html - the exact URLs it still had on file from before Feb
+ * 2026 - showed "Operazione non riuscita: Bloccata a causa di un accesso non
+ * autorizzato (403)", which is why its fix validation kept failing even
+ * though /ynab-receipts/ and /receipt-to-csv/ themselves were long fixed.
+ *
  * What it does, in order:
  *  1. 301 www -> apex, so the two hostnames stop serving duplicate content
  *  2. 301 legacy URLs onto their current equivalents
- *  3. rewrite "/path/" -> "/path/index.html" so directory URLs resolve
- *  4. 301 "/path" -> "/path/" to keep a single canonical form
+ *  3. 301 anything still nested under the old /en/ or /it/ sections
+ *  4. rewrite "/path/" -> "/path/index.html" so directory URLs resolve
+ *  5. 301 "/path" -> "/path/" to keep a single canonical form
  *
  * Anything with a file extension (/assets/*.js, /robots.txt, /privacy.html)
  * falls through untouched.
@@ -96,13 +105,20 @@ function handler(event) {
         return permanentRedirect('https://' + APEX + legacy + query);
     }
 
-    // 3. Directory URLs: serve the index document from S3.
+    // 3. Anything else still nested under the old /en/ or /it/ sections
+    //    (e.g. /en/index.html, /en/some-page.html) collapses to the same
+    //    target as the bare prefix, instead of falling through to a 403.
+    if (uri.indexOf('/en/') === 0 || uri.indexOf('/it/') === 0) {
+        return permanentRedirect('https://' + APEX + '/' + query);
+    }
+
+    // 4. Directory URLs: serve the index document from S3.
     if (uri.charAt(uri.length - 1) === '/') {
         request.uri = uri + 'index.html';
         return request;
     }
 
-    // 4. Extensionless paths get the canonical trailing slash.
+    // 5. Extensionless paths get the canonical trailing slash.
     //    Files (.js, .css, .html, .xml, .txt, .png) fall through untouched.
     var lastSegment = uri.substring(uri.lastIndexOf('/') + 1);
     if (lastSegment.indexOf('.') === -1) {
