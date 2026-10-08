@@ -538,8 +538,16 @@ condiviso — non serve ripetere per ciascuno.
 
 **Non ancora fatto**: non è agganciato a `deploy_landing.sh`, quindi le
 prossime modifiche alle pagine vanno notificate a mano (o va scritto uno
-script). Bing Webmaster Tools (il pannello, non IndexNow) richiede login
-manuale — vedi task aperto.
+script).
+
+**Bing Webmaster Tools verificato (2026-10-08).** L'importazione automatica
+da Google Search Console non ha trovato nulla — quasi certamente perché
+quel flusso non gestisce bene le proprietà di tipo Dominio (la nostra copre
+`spendifyapp.com`, `www` e `app.spendifyapp.com` insieme, possibile solo con
+una proprietà Dominio). Verificato invece con il metodo file XML:
+`BingSiteAuth.xml` generato da Bing, pubblicato sulla root e protetto in
+`KEEP_FILES` (contenuto non modificabile, perderlo significa riverificare
+da capo).
 
 ---
 
