@@ -477,13 +477,55 @@ Limite: bozze salvate prima con aliquota 22 e IVA vuota mostrano ancora 22.
 
 Il 10/10 gli effetti di home, titolo, FAQ, `noindex` e nuove pagine non sono separabili.
 
-### Azioni manuali in Search Console (richiedono login)
+### Rimisurazione del 2026-10-08 (un giorno prima del previsto)
 
-- Sitemap → reinviare `sitemap.xml`
+Controlli tecnici live tutti puliti: le pagine prima 403 restano 200, le due
+pagine nuove (`/ynab-receipt-scanner/`, `/receipt-scanner-vat/`) sono
+indicizzate, favicon corretta, `noindex` attivo sull'app, homepage con
+`<h1>` e sezione Pricing. **Attenzione nel leggere i dati di Search
+Console**: la finestra "ultimi 3 mesi" copre ancora ~10 settimane di sito
+rotto e solo ~2 di sito corretto — non è un confronto pulito.
+
+**Homepage migliorata in modo misurabile**: CTR 0%→21,74%, posizione
+12,9→10,87. Le 4 query principali (`convert receipt photos to spreadsheet`
+ecc.) sono invece ferme, invariate rispetto alla baseline — atteso, la
+finestra è ancora sporca.
+
+**Trovato un bug 403 reale, non un problema di cache di Search Console.**
+La convalida della correzione 403 falliva ripetutamente perché **falliva
+davvero**: `www.spendifyapp.com/en/index.html` e `/it/index.html` (gli URL
+esatti che Google aveva ancora in memoria da prima di febbraio) rispondevano
+403 sul serio. `LEGACY_REDIRECTS` in `infra/cloudfront/landing-router.js`
+mappava solo `/en`, `/en/`, `/it`, `/it/` — non i path annidati sotto quei
+prefissi, che cadevano sull'origine S3 (vuota da febbraio) e l'OAI
+trasformava il 404 in 403. **Risolto il 2026-10-08**: aggiunta una regola di
+prefisso che collassa qualunque cosa sotto `/en/` o `/it/` sullo stesso
+target del prefisso nudo. Verificato con una simulazione locale (18 casi) e
+con `aws cloudfront test-function` sul motore JS reale di CloudFront
+(stage DEVELOPMENT prima di pubblicare in LIVE), poi confermato sul dominio
+vero. **Impara da questo**: quando una convalida di Search Console continua
+a fallire, testare l'URL esatto segnalato nello screenshot/errore prima di
+assumere sia un problema di propagazione.
+
+**Le impression dall'Italia (7, CTR 85,7%) non sono un segnale di mercato**:
+troppo poche e troppo concentrate per essere altro che test manuali del
+proprietario. Non rivedere la conclusione "zero domanda dall'Italia" su
+questa base.
+
+**Da rifare ora in Search Console** (il fix tecnico sopra sblocca la
+convalida, ma va rilanciata):
+- Controllo URL su `www.spendifyapp.com/en/index.html` e `/it/index.html` →
+  Testa URL live → deve risultare disponibile
 - Indicizzazione → Pagine → "Bloccata a causa di un accesso non autorizzato
   (403)" → **Convalida correzione**
-- Controllo URL su `/ynab-receipts/` e `/receipt-to-csv/` → Richiedi
-  indicizzazione
+- Stesso controllo per "Pagina con reindirizzamento" (3 pagine, verificare
+  prima quali URL sono prima di convalidare)
+- Sitemap → reinviare `sitemap.xml`
+- Controllo URL su `/ynab-receipt-scanner/` e `/receipt-scanner-vat/` →
+  Richiedi indicizzazione
+
+**Prossima rimisurazione**: non prima di metà novembre, quando la finestra
+di 3 mesi rifletterà davvero il sito corretto invece di un impasto.
 
 ---
 
