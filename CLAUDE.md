@@ -549,6 +549,46 @@ una proprietà Dominio). Verificato invece con il metodo file XML:
 `KEEP_FILES` (contenuto non modificabile, perderlo significa riverificare
 da capo).
 
+### Scan SeoLoupe e correzioni (2026-10-12)
+
+Report di uno scanner automatico di terze parti, verificato voce per voce
+contro il sito reale prima di agire (vari falsi positivi: JSON-LD già
+valido, Flesch reale 45-63 non 0, compressione già attiva).
+
+**Corretto e in produzione:**
+- **Header di sicurezza**, prima assenti del tutto: HSTS, X-Content-Type-Options,
+  X-Frame-Options, Referrer-Policy, Permissions-Policy, COOP, CORP via
+  CloudFront Response Headers Policy (`infra/cloudfront/security-headers-policy.json`),
+  collegata al `DefaultCacheBehavior` della distribuzione landing (unico
+  campo toccato, verificato con un diff strutturato prima di applicare).
+  **CSP non inclusa apposta**: la home prerenderizzata usa `style="..."`
+  inline di framer-motion, una CSP sbagliata la romperebbe silenziosamente —
+  va scritta e testata a parte.
+- **`spendify-icon.png`** era 694×677 (non quadrato), 284 KB, usato così
+  com'era come logo visibile 40×40 su ogni pagina. Stessa causa del fix
+  favicon del 25/09, mai applicata qui: corretto alla fonte (`public/` nel
+  repo Lovable), non solo in `landing/` — altrimenti il prossimo sync lo
+  riportava indietro. **Rimosso da `KEEP_FILES`**: proteggeva una copia
+  sistemata a mano proprio da questo fix, ora obsoleto.
+- `width`/`height` sui tag `<img>` del logo nelle 4 pagine di contenuto
+  statiche (la home già li aveva).
+- `llms.txt` aggiunto (spec llmstxt.org), protetto in `KEEP_FILES`.
+- Cache-Control delle icone: da `max-age=0` (uguale all'HTML) a 1 giorno —
+  `deploy_landing.sh` ha ora tre fasce (assets/ 1 anno, icone 1 giorno,
+  pagine 0/revalidate).
+
+**Deliberatamente non fatto:**
+- `ai.txt`: nessuno standard condiviso esiste (a differenza di llms.txt).
+- Pagina Cookie Policy dedicata: già coperta da `privacy.html` sezione 10.
+- Text-to-HTML ratio della home (7,2%, reale): effetto strutturale del
+  markup React/Tailwind/framer-motion (classi verbose, SVG inline ripetute),
+  non un bug — la home è già passata da 1 carattere a 3084 il 25/09.
+  Risistemare il markup generato da Lovable solo per questa metrica non vale
+  lo sforzo.
+
+Verificato dal vivo dopo ogni modifica (header presenti, pagine ancora 200,
+screenshot senza errori console/regressioni visive).
+
 ---
 
 ## 8. Convenzioni
