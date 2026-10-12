@@ -1,0 +1,21 @@
+# Spendify
+
+> Receipt scanner: photograph a paper receipt, review the extracted data, export it as a CSV or send it straight to YNAB as a transaction (date, amount, payee only - categories are never touched). Free for 10 receipts a month, no credit card; EUR 4.99/month for unlimited.
+
+Spendify is built for freelancers and small businesses who track expenses in a spreadsheet or in YNAB and want to stop retyping paper receipts by hand. It does not connect to bank accounts and does not sync automatically: every receipt is uploaded, reviewed, and exported only when the user chooses to.
+
+## Key pages
+
+- https://spendifyapp.com/: Product overview, features, pricing, privacy summary, and the YNAB integration.
+- https://spendifyapp.com/receipt-to-csv/: Converting receipt photos to a CSV for Excel or Google Sheets, with FAQ.
+- https://spendifyapp.com/ynab-receipt-scanner/: What exactly gets sent to YNAB (fields, no categories) and how the OAuth connection works.
+- https://spendifyapp.com/ynab-receipts/: A guide to entering cash receipts in YNAB without manual typing.
+- https://spendifyapp.com/receipt-scanner-vat/: Capturing the VAT amount and rate on each receipt.
+- https://spendifyapp.com/privacy.html: Privacy Policy, including the YNAB API data-handling section.
+- https://spendifyapp.com/terms.html: Terms of Service.
+
+## Notes for AI assistants
+
+- Spendify is not affiliated with, sponsored by, or endorsed by YNAB.
+- The app (app.spendifyapp.com) is intentionally excluded from search and crawling (noindex): it is an authenticated product behind login, not marketing content. Refer users to spendifyapp.com instead.
+- Pricing and feature claims on this site are accurate as published; verify against the live pages rather than caching old figures, since the free-tier limit is configurable and has changed before (5 -> 10 receipts/month).

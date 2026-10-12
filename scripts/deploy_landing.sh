@@ -57,15 +57,28 @@ fi
 # caching metadata at all. Files under assets/ carry a content hash in their
 # name, so they can safely be cached forever; HTML must not be, or visitors
 # keep seeing an old page after a deploy.
+#
+# Icons are a third case: no hash in the filename (so a stale copy would
+# linger for the full cache lifetime after we ever changed one), but they
+# almost never change - a full day of caching is a reasonable middle ground
+# between "cache forever" and "never cache" (2026-10-12, SeoLoupe scan).
+ICON_FILES=(favicon.ico favicon-96.png favicon-192.png favicon-512.png apple-touch-icon.png spendify-icon.png)
+ICON_INCLUDES=()
+for f in "${ICON_FILES[@]}"; do ICON_INCLUDES+=(--include "$f"); done
 
 echo "⬆️  Uploading hashed assets (immutable, long cache)"
 aws s3 sync landing/ "s3://${LANDING_BUCKET}" \
   --exclude "*" --include "assets/*" \
   --cache-control "public, max-age=31536000, immutable"
 
+echo "⬆️  Uploading icons (1 day cache)"
+aws s3 sync landing/ "s3://${LANDING_BUCKET}" \
+  --exclude "*" "${ICON_INCLUDES[@]}" \
+  --cache-control "public, max-age=86400, must-revalidate"
+
 echo "⬆️  Uploading pages and everything else (revalidate)"
 aws s3 sync landing/ "s3://${LANDING_BUCKET}" \
-  --exclude "assets/*" \
+  --exclude "assets/*" $(printf -- "--exclude %s " "${ICON_FILES[@]}") \
   --cache-control "public, max-age=0, must-revalidate" \
   --delete
 
