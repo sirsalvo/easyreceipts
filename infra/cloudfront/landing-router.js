@@ -29,12 +29,23 @@
  * autorizzato (403)", which is why its fix validation kept failing even
  * though /ynab-receipts/ and /receipt-to-csv/ themselves were long fixed.
  *
- * What it does, in order:
- *  1. 301 www -> apex, so the two hostnames stop serving duplicate content
- *  2. 301 legacy URLs onto their current equivalents
- *  3. 301 anything still nested under the old /en/ or /it/ sections
- *  4. rewrite "/path/" -> "/path/index.html" so directory URLs resolve
- *  5. 301 "/path" -> "/path/" to keep a single canonical form
+ * Found on 2026-10-12: the Coverage report that came back after the fix above
+ * replaced the 403 entry (2 pages, now 0 - confirmed fixed) with a NEW
+ * "Errore di reindirizzamento" (redirect error) entry, also 2 pages. Verified
+ * live with curl: www.spendifyapp.com/en/index.html and /it/index.html - the
+ * same two legacy URLs Google still had on file - were chaining through TWO
+ * redirects (www -> apex, same path, then apex -> collapsed target) because
+ * the www check returned immediately, before the legacy/nested-path checks
+ * ran. Now the target path is resolved first and host + path collapse into a
+ * single 301, regardless of which rules apply.
+ *
+ * What it does:
+ *  1. Resolve the canonical path (legacy exact match, then anything nested
+ *     under /en/ or /it/, then add a trailing slash to extensionless paths).
+ *  2. If the host was "www." and/or the path changed, issue ONE 301 straight
+ *     to the final https://apex/path.
+ *  3. Otherwise rewrite "/path/" -> "/path/index.html" so directory URLs
+ *     resolve against the S3 origin.
  *
  * Anything with a file extension (/assets/*.js, /robots.txt, /privacy.html)
  * falls through untouched.
@@ -93,36 +104,40 @@ function handler(event) {
     var uri = request.uri;
     var query = buildQueryString(request);
 
-    // 1. Collapse www onto the apex domain.
     var hostHeader = request.headers.host;
-    if (hostHeader && hostHeader.value && hostHeader.value.indexOf('www.') === 0) {
-        return permanentRedirect('https://' + APEX + uri + query);
-    }
+    var isWww = Boolean(hostHeader && hostHeader.value && hostHeader.value.indexOf('www.') === 0);
 
-    // 2. Legacy URLs from the pre-February landing.
+    // Resolve the canonical PATH first, before deciding on the host, so a
+    // www + legacy-path visitor gets ONE redirect straight to the final URL
+    // instead of chaining through an intermediate apex hop (2026-10-12).
+    var targetUri = uri;
+    var pathChanged = false;
+
     var legacy = LEGACY_REDIRECTS[uri];
     if (legacy) {
-        return permanentRedirect('https://' + APEX + legacy + query);
+        targetUri = legacy;
+        pathChanged = true;
+    } else if (uri.indexOf('/en/') === 0 || uri.indexOf('/it/') === 0) {
+        // Anything else still nested under the old /en/ or /it/ sections
+        // (e.g. /en/index.html, /en/some-page.html) collapses to the same
+        // target as the bare prefix, instead of falling through to a 403.
+        targetUri = '/';
+        pathChanged = true;
+    } else if (uri.charAt(uri.length - 1) !== '/' && uri.substring(uri.lastIndexOf('/') + 1).indexOf('.') === -1) {
+        // Extensionless paths get the canonical trailing slash.
+        // Files (.js, .css, .html, .xml, .txt, .png) fall through untouched.
+        targetUri = uri + '/';
+        pathChanged = true;
     }
 
-    // 3. Anything else still nested under the old /en/ or /it/ sections
-    //    (e.g. /en/index.html, /en/some-page.html) collapses to the same
-    //    target as the bare prefix, instead of falling through to a 403.
-    if (uri.indexOf('/en/') === 0 || uri.indexOf('/it/') === 0) {
-        return permanentRedirect('https://' + APEX + '/' + query);
+    if (isWww || pathChanged) {
+        return permanentRedirect('https://' + APEX + targetUri + query);
     }
 
-    // 4. Directory URLs: serve the index document from S3.
+    // Directory URLs: serve the index document from S3.
     if (uri.charAt(uri.length - 1) === '/') {
         request.uri = uri + 'index.html';
         return request;
-    }
-
-    // 5. Extensionless paths get the canonical trailing slash.
-    //    Files (.js, .css, .html, .xml, .txt, .png) fall through untouched.
-    var lastSegment = uri.substring(uri.lastIndexOf('/') + 1);
-    if (lastSegment.indexOf('.') === -1) {
-        return permanentRedirect('https://' + APEX + uri + '/' + query);
     }
 
     return request;
