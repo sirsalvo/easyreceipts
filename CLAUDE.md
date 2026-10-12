@@ -1,6 +1,6 @@
 # Spendify (repo: easyreceipts) — contesto di progetto
 
-Documento di handoff. Ultimo aggiornamento: **2026-09-26**.
+Documento di handoff. Ultimo aggiornamento: **2026-10-12**.
 
 Il progetto è **live e con utenti reali e pagamenti veri**. Ogni modifica a
 `prod` tocca dati di produzione. Leggi la sezione "Trappole note" prima di
@@ -588,6 +588,34 @@ valido, Flesch reale 45-63 non 0, compressione già attiva).
 
 Verificato dal vivo dopo ogni modifica (header presenti, pagine ancora 200,
 screenshot senza errori console/regressioni visive).
+
+### Nuovo report di Coverage e redirect a doppio salto (2026-10-12)
+
+Confrontato il report scaricato il 2026-10-12 con quello dell'8/10 voce per
+voce, prima di agire. **Il 403 è sceso da 2 pagine a 0**: il fix dell'8/10
+ha funzionato, confermato dal report stesso. "Pagina con reindirizzamento"
+(3 pagine) e "canonical alternativo" (3 pagine) sono invariate rispetto
+all'8/10: classificazioni normali per redirect intenzionali, **non sono
+regressioni** e non richiedono azione.
+
+**Trovato un bug reale**: nuova voce "Errore di reindirizzamento" (2
+pagine). Verificato con curl che `www.spendifyapp.com/en/index.html` e
+`/it/index.html` — gli stessi due URL legacy che Google ha ancora in
+memoria — facevano **due salti di redirect** invece di uno
+(`www→apex` sullo stesso path, poi `apex→destinazione collassata`), perché
+in `landing-router.js` il controllo `www` restituiva subito senza passare
+dal controllo legacy/nested. Risolto risolvendo prima il path finale e poi
+emettendo un solo 301, indipendentemente da quali regole si applicano.
+Verificato su `aws cloudfront test-function` (stage DEVELOPMENT, motore JS
+reale) prima di pubblicare in LIVE, poi confermato dal vivo: entrambi gli
+URL ora vanno dritti a `https://spendifyapp.com/` in un solo salto.
+Grafico non ancora informativo: i dati di Search Console hanno ~3 giorni
+di ritardo, fermi al 2026-10-09 anche nel report scaricato il 12.
+
+**Da rifare in Search Console quando i dati si aggiornano**: controllare
+che la nuova voce "Errore di reindirizzamento" scompaia nei prossimi
+report, senza bisogno di una convalida manuale (non è stata avviata,
+`Non iniziata`).
 
 ---
 
